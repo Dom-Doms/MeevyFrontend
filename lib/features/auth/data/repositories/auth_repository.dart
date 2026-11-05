@@ -1,70 +1,117 @@
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
+import '../models/login_response.dart';
 import '../services/auth_api_service.dart';
 import '../services/token_storage.dart';
 
 /*
- * Coordina autenticazione e gestione dei token.
+ * Gestisce i token e il ciclo di vita dell'autenticazione.
  *
- * Mantiene l'access token in memoria e delega
- * il salvataggio del refresh token a TokenStorage.
+ * L'access token rimane in memoria, mentre il refresh token
+ * viene conservato nello storage sicuro del dispositivo.
  */
-class AuthRepository {
+class AuthRepository extends ChangeNotifier {
   final AuthApiService _apiService;
   final TokenStorage _tokenStorage;
 
   String? _accessToken;
+  DateTime? _expiresAt;
+  Future<bool>? _refreshInProgress;
+  bool _loggingOut = false;
+  int _sessionVersion = 0;
 
   AuthRepository(this._apiService, this._tokenStorage);
 
-  String? get accessToken => _accessToken;
+  String? get accessToken => _loggingOut ? null : _accessToken;
 
-  bool get isAuthenticated => _accessToken != null;
+  bool get isAuthenticated => accessToken != null;
 
-  /*
-   * Effettua il login e conserva i token.
-   * L'access token viene assegnato soltanto dopo il salvataggio del refresh token.
-   */
+  int get sessionVersion => _sessionVersion;
+
+  // Autentica l'utente e memorizza i token ricevuti.
   Future<void> login({
     required String email,
     required String password,
   }) async {
+    if (_loggingOut) {
+      throw StateError('Logout in corso.');
+    }
+
     final response = await _apiService.login(
       email: email,
       password: password,
     );
 
-    await _tokenStorage.saveRefreshToken(response.refreshToken);
-    _accessToken = response.accessToken;
+    _sessionVersion++;
+    await _saveSession(response);
   }
 
   /*
-   * Prova a ripristinare la sessione all'avvio.
-   *
-   * Se il refresh token è scaduto o revocato, elimina le credenziali locali.
-   * Gli errori di rete non cancellano la sessione.
+   * Ripristina la sessione quando l'app viene riaperta.
+   * Utilizza il refresh token precedentemente salvato.
    */
-  Future<bool> restoreSession() async {
+  Future<bool> restoreSession() {
+    return refreshAccessToken();
+  }
+
+  /*
+   * Controlla la scadenza dell'access token.
+   * Se mancano meno di 30 secondi, lo rinnova
+   * prima di inviare la richiesta HTTP.
+   */
+  Future<bool> ensureValidAccessToken() async {
+    if (!isAuthenticated) return false;
+
+    final expiration = _expiresAt;
+
+    if (expiration != null &&
+        DateTime.now().isBefore(
+          expiration.subtract(const Duration(seconds: 30)),
+        )) {
+      return true;
+    }
+
+    return refreshAccessToken();
+  }
+
+  /*
+   * Evita refresh contemporanei.
+   * Le richieste che arrivano durante un rinnovo
+   * attendono tutte lo stesso Future.
+   */
+  Future<bool> refreshAccessToken() {
+    if (_loggingOut) return Future.value(false);
+
+    return _refreshInProgress ??=
+        _performRefresh().whenComplete(() {
+          _refreshInProgress = null;
+        });
+  }
+
+  // Effettua realmente il rinnovo tramite il backend.
+  Future<bool> _performRefresh() async {
     final refreshToken = await _tokenStorage.readRefreshToken();
 
     if (refreshToken == null) {
-      _accessToken = null;
+      _clearAccessToken();
       return false;
     }
 
     try {
       final response = await _apiService.refresh(refreshToken);
 
-      // Il refresh token precedente non è più valido.
-      await _tokenStorage.saveRefreshToken(response.refreshToken);
-      _accessToken = response.accessToken;
-
+      await _saveSession(response);
       return true;
     } on DioException catch (error) {
+      /*
+       * Un 401 indica un refresh token non più valido.
+       * Un errore di rete, invece, non cancella la sessione.
+       */
       if (error.response?.statusCode == 401) {
+        _clearAccessToken();
         await _tokenStorage.deleteRefreshToken();
-        _accessToken = null;
         return false;
       }
 
@@ -72,21 +119,61 @@ class AuthRepository {
     }
   }
 
+  // Memorizza il nuovo refresh token e aggiorna il JWT.
+  Future<void> _saveSession(LoginResponse response) async {
+    await _tokenStorage.saveRefreshToken(response.refreshToken);
+
+    _accessToken = response.accessToken;
+    _expiresAt = DateTime.now().add(
+      Duration(seconds: response.expiresInSeconds),
+    );
+
+    notifyListeners();
+  }
+
   /*
-   * Richiede il logout al backend.
-   * Rimuove comunque i token locali anche
-   * se la revoca remota non riesce.
+   * Revoca il refresh token e termina la sessione.
+   * Se esiste un rinnovo in corso, ne attende il termine.
    */
   Future<void> logout() async {
+    if (_loggingOut) return;
+
+    _loggingOut = true;
+    _sessionVersion++;
+    notifyListeners();
+
     try {
+      final pendingRefresh = _refreshInProgress;
+
+      if (pendingRefresh != null) {
+        try {
+          await pendingRefresh;
+        } catch (_) {
+          // Il logout deve proseguire anche se il refresh fallisce.
+        }
+      }
+
       final refreshToken = await _tokenStorage.readRefreshToken();
 
       if (refreshToken != null) {
         await _apiService.logout(refreshToken);
       }
     } finally {
-      _accessToken = null;
-      await _tokenStorage.deleteRefreshToken();
+      _clearAccessToken();
+
+      try {
+        await _tokenStorage.deleteRefreshToken();
+      } finally {
+        _loggingOut = false;
+        notifyListeners();
+      }
     }
+  }
+
+  // Elimina dalla memoria l'access token corrente.
+  void _clearAccessToken() {
+    _accessToken = null;
+    _expiresAt = null;
+    notifyListeners();
   }
 }

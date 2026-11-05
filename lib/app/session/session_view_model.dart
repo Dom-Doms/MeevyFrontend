@@ -33,6 +33,10 @@ class SessionViewModel extends ChangeNotifier {
 
   SessionStatus get status => _status;
 
+  String? _logoutWarning;
+
+  String? get logoutWarning => _logoutWarning;
+
   /*
    * Verifica se esiste una sessione recuperabile.
    *
@@ -75,8 +79,14 @@ class SessionViewModel extends ChangeNotifier {
    * rimuove le credenziali locali.
    */
   Future<void> logout() async {
+    _logoutWarning = null;
+
     try {
       await _authRepository.logout();
+    } catch (_) {
+      _logoutWarning =
+      'Impossibile confermare la revoca della sessione.';
+      notifyListeners();
     } finally {
       _setStatus(SessionStatus.unauthenticated);
     }

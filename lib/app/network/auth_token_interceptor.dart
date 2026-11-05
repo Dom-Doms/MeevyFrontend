@@ -4,45 +4,117 @@ import 'package:dio/dio.dart';
 import '../../features/auth/data/repositories/auth_repository.dart';
 
 /*
- * Aggiunge automaticamente l'access token JWT
- * alle richieste REST che richiedono autenticazione.
+ * Gestisce l'autenticazione delle richieste HTTP protette.
  *
- * Recupera il token da AuthRepository, senza
- * conservarne una seconda copia.
+ * Aggiunge l'access token e tenta il refresh quando necessario.
+ * Le richieste GET possono essere ripetute una sola volta dopo un 401.
  */
 class AuthTokenInterceptor extends Interceptor {
+  final Dio _dio;
   final AuthRepository _authRepository;
 
-  AuthTokenInterceptor(this._authRepository);
+  static const String _retryKey = 'authRetryPerformed';
+  static const String _sessionKey = 'sessionVersion';
 
-  // Endpoint pubblici che non richiedono l'access token.
-  static const Set<String> _publicPaths = {
-    '/auth/login',
-    '/auth/refresh',
-    '/auth/logout',
-    '/user/register',
-  };
+  AuthTokenInterceptor(this._dio, this._authRepository);
 
-  /*
-   * Intercetta la richiesta prima dell'invio al server.
-   * Se l'utente è autenticato, aggiunge l'header Bearer.
-   */
   @override
   void onRequest(
       RequestOptions options,
       RequestInterceptorHandler handler,
-      ) {
-    final path = options.uri.path;
+      ) async {
+    try {
+      // Verifica il JWT ed eventualmente lo rinnova.
+      final valid = await _authRepository.ensureValidAccessToken();
+      final token = _authRepository.accessToken;
 
-    if (!_publicPaths.contains(path)) {
-      final accessToken = _authRepository.accessToken;
-
-      if (accessToken != null && accessToken.isNotEmpty) {
-        options.headers['Authorization'] = 'Bearer $accessToken';
+      if (!valid || token == null) {
+        handler.reject(
+          DioException(
+            requestOptions: options,
+            error: StateError('Sessione non autenticata.'),
+          ),
+        );
+        return;
       }
+
+      options.headers['Authorization'] = 'Bearer $token';
+      options.extra[_sessionKey] = _authRepository.sessionVersion;
+
+      handler.next(options);
+    } catch (error, stackTrace) {
+      handler.reject(
+        DioException(
+          requestOptions: options,
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
+  @override
+  void onError(
+      DioException error,
+      ErrorInterceptorHandler handler,
+      ) async {
+    final request = error.requestOptions;
+
+    // Non ripete richieste diverse da GET o già ripetute.
+    if (error.response?.statusCode != 401 ||
+        request.method.toUpperCase() != 'GET' ||
+        request.extra[_retryKey] == true ||
+        request.extra[_sessionKey] !=
+            _authRepository.sessionVersion) {
+      handler.next(error);
+      return;
     }
 
-    // Permette a Dio di proseguire con la richiesta.
-    handler.next(options);
+    try {
+      var token = _authRepository.accessToken;
+
+      if (token == null) {
+        handler.next(error);
+        return;
+      }
+
+      /*
+       * Se il token utilizzato è ancora quello corrente,
+       * prova a rinnovarlo. Se è già cambiato, un'altra
+       * richiesta ha effettuato il refresh.
+       */
+      if (request.headers['Authorization'] == 'Bearer $token') {
+        final refreshed = await _authRepository.refreshAccessToken();
+
+        if (!refreshed) {
+          handler.next(error);
+          return;
+        }
+
+        token = _authRepository.accessToken;
+      }
+
+      if (token == null) {
+        handler.next(error);
+        return;
+      }
+
+      // Ripete la GET con il nuovo JWT e impedisce ulteriori retry.
+      final retryRequest = request.copyWith(
+        headers: {
+          ...request.headers,
+          'Authorization': 'Bearer $token',
+        },
+        extra: {
+          ...request.extra,
+          _retryKey: true,
+        },
+      );
+
+      final response = await _dio.fetch<dynamic>(retryRequest);
+      handler.resolve(response);
+    } catch (_) {
+      handler.next(error);
+    }
   }
 }
