@@ -140,6 +140,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           )
                               : const Text('Accedi'),
                         ),
+                        const SizedBox(height: 12),
+
+                        TextButton(
+                          onPressed: login.isLoading
+                              ? null
+                              : () {
+                            context.read<SessionViewModel>().enterGuestMode();
+                          },
+                          child: const Text('Continua come ospite'),
+                        ),
                       ],
                     ),
                   );

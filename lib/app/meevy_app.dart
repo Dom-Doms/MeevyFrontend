@@ -1,18 +1,21 @@
 
-import 'package:dio/dio.dart';
+//import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'navigation/main_shell.dart';
 
 
 
-import '../features/subject/data/repositories/subjects_repository.dart';
+
+/*import '../features/subject/data/repositories/subjects_repository.dart';
 import '../features/subject/presentation/screens/subjects_screen.dart';
-import '../features/subject/presentation/view_models/subjects_view_model.dart';
+import '../features/subject/presentation/view_models/subjects_view_model.dart';***/
 import 'session/session_view_model.dart';
 
 import '../features/auth/data/repositories/auth_repository.dart';
 import '../features/auth/presentation/view_models/login_view_model.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
+import '../features/pomodoro/presentation/screens/guest_pomodoro_screen.dart';
 
 
 /*
@@ -81,14 +84,18 @@ class _MeevyAppState extends State<MeevyApp> {
                 ),
                 child: const LoginScreen(),
               );
-
             case SessionStatus.authenticated:
+              return const MainShell();
+            /*case SessionStatus.authenticated:
+            questa logica è stata spostata in mainShell
               return ChangeNotifierProvider(
                 create: (context) => SubjectsViewModel(
                   SubjectsRepository(context.read<Dio>()),
                 )..load(),
                 child: const SubjectsScreen(),
-              );
+              );*/
+            case SessionStatus.guest:
+              return const GuestPomodoroScreen();
           }
         },
       ),

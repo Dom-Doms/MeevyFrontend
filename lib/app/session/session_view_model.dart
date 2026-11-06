@@ -16,6 +16,7 @@ enum SessionStatus {
   authenticated,
   unauthenticated,
   error,
+  guest,
 }
 
 /*
@@ -28,8 +29,10 @@ class SessionViewModel extends ChangeNotifier {
   final AuthRepository _authRepository;
 
   SessionStatus _status = SessionStatus.loading;
-
-  SessionViewModel(this._authRepository);
+  //per evitare che ssesionViewModel mantega lo stato autenticato anche dopo il logout
+  SessionViewModel(this._authRepository) {
+    _authRepository.addListener(_onAuthChanged);
+  }
 
   SessionStatus get status => _status;
 
@@ -98,5 +101,32 @@ class SessionViewModel extends ChangeNotifier {
 
     _status = newStatus;
     notifyListeners();
+  }
+
+
+  // Aggiorna la sessione quando il repository perde le credenziali.
+  void _onAuthChanged() {
+    if (_status == SessionStatus.authenticated &&
+        !_authRepository.isAuthenticated) {
+      _logoutWarning = null;//Così un eventuale avviso di logout precedente non rimane visualizzato dopo un nuovo login.
+      _setStatus(SessionStatus.unauthenticated);
+    }
+  }
+
+  //Per evitare di lasciare un listner registrato quando il ViewModel non viene eliminato
+  @override
+  void dispose() {
+    _authRepository.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  // Entra nella modalità ospite senza effettuare il login.
+  void enterGuestMode() {
+    _setStatus(SessionStatus.guest);
+  }
+
+  // Esce dalla modalità ospite e torna al login.
+  void exitGuestMode() {
+    _setStatus(SessionStatus.unauthenticated);
   }
 }

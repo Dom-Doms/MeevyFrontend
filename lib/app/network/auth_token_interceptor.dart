@@ -55,18 +55,18 @@ class AuthTokenInterceptor extends Interceptor {
 
   @override
   void onError(
-      DioException error,
+      DioException err,
       ErrorInterceptorHandler handler,
       ) async {
-    final request = error.requestOptions;
+    final request = err.requestOptions;
 
     // Non ripete richieste diverse da GET o già ripetute.
-    if (error.response?.statusCode != 401 ||
+    if (err.response?.statusCode != 401 ||
         request.method.toUpperCase() != 'GET' ||
         request.extra[_retryKey] == true ||
         request.extra[_sessionKey] !=
             _authRepository.sessionVersion) {
-      handler.next(error);
+      handler.next(err);
       return;
     }
 
@@ -74,7 +74,7 @@ class AuthTokenInterceptor extends Interceptor {
       var token = _authRepository.accessToken;
 
       if (token == null) {
-        handler.next(error);
+        handler.next(err);
         return;
       }
 
@@ -87,7 +87,7 @@ class AuthTokenInterceptor extends Interceptor {
         final refreshed = await _authRepository.refreshAccessToken();
 
         if (!refreshed) {
-          handler.next(error);
+          handler.next(err);
           return;
         }
 
@@ -95,7 +95,7 @@ class AuthTokenInterceptor extends Interceptor {
       }
 
       if (token == null) {
-        handler.next(error);
+        handler.next(err);
         return;
       }
 
@@ -114,7 +114,7 @@ class AuthTokenInterceptor extends Interceptor {
       final response = await _dio.fetch<dynamic>(retryRequest);
       handler.resolve(response);
     } catch (_) {
-      handler.next(error);
+      handler.next(err);
     }
   }
 }
