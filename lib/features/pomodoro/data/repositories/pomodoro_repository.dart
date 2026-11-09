@@ -53,6 +53,66 @@ class PomodoroRepository {
     return PomodoroSession.fromJson(json);
   }
 
+
+/*
+ * Avvia una sessione in stato READY.
+ */
+  Future<PomodoroSession> startSession(int id) async {
+    final response = await _dio.post<dynamic>(
+      '/pomodoro-personal-sessions/$id/start',
+    );
+
+    return PomodoroSession.fromJson(
+      Map<String, dynamic>.from(response.data as Map),
+    );
+  }
+
+/*
+ * Sospende manualmente una sessione RUNNING.
+ */
+  Future<PomodoroSession> pauseSession(int id) async {
+    final response = await _dio.post<dynamic>(
+      '/pomodoro-personal-sessions/$id/pause',
+    );
+
+    return PomodoroSession.fromJson(
+      Map<String, dynamic>.from(response.data as Map),
+    );
+  }
+
+
+
+/*
+ * Crea una nuova sessione Pomodoro personale.
+ *
+ * Le durate vengono ricevute in minuti dalla UI
+ * e convertite in secondi per il backend.
+ *
+ * La sessione viene creata nello stato READY.
+ */
+  Future<PomodoroSession> createSession({
+    required int subjectId,
+    required int studyMinutes,
+    required int breakMinutes,
+    required int targetMinutes,
+  }) async {
+    final response = await _dio.post<dynamic>(
+      '/pomodoro-personal-sessions',
+      data: {
+        'subjectId': subjectId,
+        'studyDurationSeconds': studyMinutes * 60,
+        'breakDurationSeconds': breakMinutes * 60,
+        'targetDurationSeconds': targetMinutes * 60,
+      },
+    );
+
+    final json = Map<String, dynamic>.from(
+      response.data as Map,
+    );
+
+    return PomodoroSession.fromJson(json);
+  }
+
 /*
  * Annulla una sessione.
  * Non contabilizza il tempo di studio.

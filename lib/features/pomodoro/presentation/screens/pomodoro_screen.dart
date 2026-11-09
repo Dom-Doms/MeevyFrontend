@@ -148,16 +148,16 @@ class PomodoroScreen extends StatelessWidget {
       PomodoroStatus.cancelled => 'Annullato',
     };
 
-    final phaseLabel = switch (session.phase) {
+    final phaseLabel = switch (pomodoro.displayPhase) {
       PomodoroPhase.study => 'Studio',
       PomodoroPhase.breakTime => 'Pausa programmata',
       null => 'Sessione non avviata',
     };
 
-    // In READY mostriamo la durata di studio configurata.
+    // In READY mostriamo la durata di studio dei secondi che mancano.
     final displaySeconds = session.status == PomodoroStatus.ready
         ? session.studyDurationSeconds
-        : session.remainingPhaseSeconds;
+        : pomodoro.displayRemainingPhaseSeconds;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -182,6 +182,22 @@ class PomodoroScreen extends StatelessWidget {
         //aggiunto ma da ricontrollare prima versione di prova
 
         const SizedBox(height: 20),
+
+// Avvia una sessione configurata.
+        if (session.status == PomodoroStatus.ready)
+          FilledButton.icon(
+            onPressed: pomodoro.startSession,
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('Avvia'),
+          ),
+
+// Mette in pausa una sessione in esecuzione.
+        if (session.status == PomodoroStatus.running)
+          FilledButton.icon(
+            onPressed: pomodoro.pauseSession,
+            icon: const Icon(Icons.pause),
+            label: const Text('Pausa'),
+          ),
 
 // Possiamo riprendere soltanto una sessione sospesa.
         if (session.status == PomodoroStatus.paused)
@@ -243,7 +259,7 @@ class PomodoroScreen extends StatelessWidget {
 
         Text(
           'Tempo totale residuo: '
-              '${_formatDuration(session.remainingSessionSeconds)}',
+              '${_formatDuration(pomodoro.displayRemainingSessionSeconds)}',
         ),
       ],
     );
