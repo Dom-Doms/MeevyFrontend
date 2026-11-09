@@ -1,4 +1,3 @@
-
 import 'package:dio/dio.dart';
 
 import '../models/pomodoro_session.dart';
@@ -23,16 +22,11 @@ class PomodoroRepository {
       '/pomodoro-personal-sessions/current',
     );
 
-
-
-
     if (response.statusCode == 204) {
       return null;
     }
 
-    final json = Map<String, dynamic>.from(
-      response.data as Map,
-    );
+    final json = Map<String, dynamic>.from(response.data as Map);
 
     return PomodoroSession.fromJson(json);
   }
@@ -46,15 +40,12 @@ class PomodoroRepository {
       '/pomodoro-personal-sessions/$id/resume',
     );
 
-    final json = Map<String, dynamic>.from(
-      response.data as Map,
-    );
+    final json = Map<String, dynamic>.from(response.data as Map);
 
     return PomodoroSession.fromJson(json);
   }
 
-
-/*
+  /*
  * Avvia una sessione in stato READY.
  */
   Future<PomodoroSession> startSession(int id) async {
@@ -67,7 +58,7 @@ class PomodoroRepository {
     );
   }
 
-/*
+  /*
  * Sospende manualmente una sessione RUNNING.
  */
   Future<PomodoroSession> pauseSession(int id) async {
@@ -80,9 +71,7 @@ class PomodoroRepository {
     );
   }
 
-
-
-/*
+  /*
  * Crea una nuova sessione Pomodoro personale.
  *
  * Le durate vengono ricevute in minuti dalla UI
@@ -106,22 +95,16 @@ class PomodoroRepository {
       },
     );
 
-    final json = Map<String, dynamic>.from(
-      response.data as Map,
-    );
+    final json = Map<String, dynamic>.from(response.data as Map);
 
     return PomodoroSession.fromJson(json);
   }
 
-/*
+  /*
  * Annulla una sessione.
  * Non contabilizza il tempo di studio.
  */
   Future<void> cancelSession(int id) async {
-    await _dio.post<dynamic>(
-      '/pomodoro-personal-sessions/$id/cancel',
-    );
+    await _dio.post<dynamic>('/pomodoro-personal-sessions/$id/cancel');
   }
-
-
 }

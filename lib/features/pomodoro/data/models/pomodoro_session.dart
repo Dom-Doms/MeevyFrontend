@@ -1,16 +1,6 @@
+enum PomodoroStatus { ready, running, paused, completed, cancelled }
 
-enum PomodoroStatus {
-  ready,
-  running,
-  paused,
-  completed,
-  cancelled,
-}
-
-enum PomodoroPhase {
-  study,
-  breakTime,
-}
+enum PomodoroPhase { study, breakTime }
 
 class PomodoroSession {
   final int id;

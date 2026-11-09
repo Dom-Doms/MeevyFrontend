@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,9 +9,7 @@ class GuestPomodoroScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pomodoro ospite'),
-      ),
+      appBar: AppBar(title: const Text('Pomodoro ospite')),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -23,9 +20,7 @@ class GuestPomodoroScreen extends StatelessWidget {
             const Text('Pomodoro personale'),
             const SizedBox(height: 8),
 
-            const Text(
-              'Qui realizzeremo il timer locale.',
-            ),
+            const Text('Qui realizzeremo il timer locale.'),
 
             const SizedBox(height: 24),
 

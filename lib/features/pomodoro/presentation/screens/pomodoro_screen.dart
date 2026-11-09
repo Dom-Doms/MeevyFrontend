@@ -1,9 +1,9 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/pomodoro_session.dart';
 import '../view_models/pomodoro_view_model.dart';
+import '../widgets/pomodoro_setup_form.dart';
 
 /*
  * Schermata del Pomodoro personale autenticato.
@@ -37,9 +37,7 @@ class PomodoroScreen extends StatelessWidget {
                   const SizedBox(height: 32),
 
                   Expanded(
-                    child: Center(
-                      child: _buildContent(context, pomodoro),
-                    ),
+                    child: Center(child: _buildContent(context, pomodoro)),
                   ),
                 ],
               ),
@@ -54,10 +52,7 @@ class PomodoroScreen extends StatelessWidget {
    * Decide cosa visualizzare in base allo stato
    * del ViewModel.
    */
-  Widget _buildContent(
-      BuildContext context,
-      PomodoroViewModel pomodoro,
-      ) {
+  Widget _buildContent(BuildContext context, PomodoroViewModel pomodoro) {
     if (pomodoro.isLoading) {
       return const CircularProgressIndicator();
     }
@@ -66,10 +61,7 @@ class PomodoroScreen extends StatelessWidget {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            pomodoro.errorMessage!,
-            textAlign: TextAlign.center,
-          ),
+          Text(pomodoro.errorMessage!, textAlign: TextAlign.center),
 
           const SizedBox(height: 16),
 
@@ -91,41 +83,14 @@ class PomodoroScreen extends StatelessWidget {
   }
 
   /*
-   * Schermata mostrata quando GET /current
-   * restituisce 204 No Content.
-   */
+ * Mostra il form quando non esiste una sessione corrente.
+ *
+ * Lo scroll evita problemi su schermi Android piccoli.
+ */
   Widget _buildEmptyState(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          Icons.timer_outlined,
-          size: 80,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-
-        const SizedBox(height: 24),
-
-        Text(
-          'Pronto per studiare?',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-
-        const SizedBox(height: 12),
-
-        const Text(
-          'Non hai nessuna sessione Pomodoro in corso.',
-          textAlign: TextAlign.center,
-        ),
-
-        const SizedBox(height: 24),
-
-        const Text(
-          'Nel prossimo passaggio aggiungeremo '
-              'la configurazione di una nuova sessione.',
-          textAlign: TextAlign.center,
-        ),
-      ],
+    return const SizedBox(
+      width: double.infinity,
+      child: SingleChildScrollView(child: PomodoroSetupForm()),
     );
   }
 
@@ -136,10 +101,10 @@ class PomodoroScreen extends StatelessWidget {
    * risposta HTTP: non è ancora un countdown.
    */
   Widget _buildSession(
-      BuildContext context,
-      PomodoroViewModel pomodoro,
-      PomodoroSession session,
-      ) {
+    BuildContext context,
+    PomodoroViewModel pomodoro,
+    PomodoroSession session,
+  ) {
     final statusLabel = switch (session.status) {
       PomodoroStatus.ready => 'Pronto',
       PomodoroStatus.running => 'In corso',
@@ -162,10 +127,7 @@ class PomodoroScreen extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          phaseLabel,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text(phaseLabel, style: Theme.of(context).textTheme.titleMedium),
 
         const SizedBox(height: 20),
 
@@ -177,89 +139,104 @@ class PomodoroScreen extends StatelessWidget {
         const SizedBox(height: 16),
 
         Chip(label: Text(statusLabel)),
+        if (pomodoro.isPerformingAction) ...[
+          const SizedBox(height: 12),
+          const LinearProgressIndicator(),
+        ],
 
-
-        //aggiunto ma da ricontrollare prima versione di prova
+        if (pomodoro.actionError != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            pomodoro.actionError!,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
 
         const SizedBox(height: 20),
 
-// Avvia una sessione configurata.
+        // Avvia una sessione configurata.
         if (session.status == PomodoroStatus.ready)
           FilledButton.icon(
-            onPressed: pomodoro.startSession,
+            // Pulsante Avvia
+            onPressed: pomodoro.isPerformingAction
+                ? null
+                : pomodoro.startSession,
             icon: const Icon(Icons.play_arrow),
             label: const Text('Avvia'),
           ),
 
-// Mette in pausa una sessione in esecuzione.
+        // Mette in pausa una sessione in esecuzione.
         if (session.status == PomodoroStatus.running)
           FilledButton.icon(
-            onPressed: pomodoro.pauseSession,
+            // Pulsante Pausa
+            onPressed: pomodoro.isPerformingAction
+                ? null
+                : pomodoro.pauseSession,
             icon: const Icon(Icons.pause),
             label: const Text('Pausa'),
           ),
 
-// Possiamo riprendere soltanto una sessione sospesa.
+        // Possiamo riprendere soltanto una sessione sospesa.
         if (session.status == PomodoroStatus.paused)
           FilledButton.icon(
-            onPressed: pomodoro.resumeSession,
+            // Pulsante Riprendi
+            onPressed: pomodoro.isPerformingAction
+                ? null
+                : pomodoro.resumeSession,
             icon: const Icon(Icons.play_arrow),
             label: const Text('Riprendi'),
           ),
 
-// READY, RUNNING e PAUSED possono essere annullati.
+        // READY, RUNNING e PAUSED possono essere annullati.
         if (session.status == PomodoroStatus.ready ||
             session.status == PomodoroStatus.running ||
             session.status == PomodoroStatus.paused)
           OutlinedButton.icon(
-            onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (dialogContext) => AlertDialog(
-                  title: const Text('Annullare la sessione?'),
-                  content: const Text(
-                    'La sessione verrà annullata '
-                        'e il tempo di studio non sarà contabilizzato.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () =>
-                          Navigator.pop(dialogContext, false),
-                      child: const Text('Indietro'),
-                    ),
-                    FilledButton(
-                      onPressed: () =>
-                          Navigator.pop(dialogContext, true),
-                      child: const Text('Annulla sessione'),
-                    ),
-                  ],
-                ),
-              );
+            onPressed:
+                pomodoro
+                    .isPerformingAction // Quando premi «Annulla sessione», il ViewModel imposta isPerformingAction = true. Flutter disabilita temporaneamente il pulsante, impedendo ulteriori pressioni mentre il backend sta elaborando la richiesta.
+                ? null //onPressed: null significa che il pulsante è disabilitato.
+                : () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (dialogContext) => AlertDialog(
+                        title: const Text('Annullare la sessione?'),
+                        content: const Text(
+                          'La sessione verrà annullata '
+                          'e il tempo di studio non sarà contabilizzato.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.pop(dialogContext, false),
+                            child: const Text('Indietro'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(dialogContext, true),
+                            child: const Text('Annulla sessione'),
+                          ),
+                        ],
+                      ),
+                    );
 
-              if (confirmed == true && context.mounted) {
-                await context.read<PomodoroViewModel>().cancelSession();
-              }
-            },
+                    if (confirmed == true && context.mounted) {
+                      await context.read<PomodoroViewModel>().cancelSession();
+                    }
+                  },
             icon: const Icon(Icons.close),
             label: const Text('Annulla sessione'),
           ),
 
-
-
-
         const SizedBox(height: 32),
 
-        Text(
-          'Studio: ${session.studyDurationSeconds ~/ 60} min',
-        ),
+        Text('Studio: ${session.studyDurationSeconds ~/ 60} min'),
 
-        Text(
-          'Pausa: ${session.breakDurationSeconds ~/ 60} min',
-        ),
+        Text('Pausa: ${session.breakDurationSeconds ~/ 60} min'),
 
         Text(
           'Tempo totale residuo: '
-              '${_formatDuration(pomodoro.displayRemainingSessionSeconds)}',
+          '${_formatDuration(pomodoro.displayRemainingSessionSeconds)}',
         ),
       ],
     );
