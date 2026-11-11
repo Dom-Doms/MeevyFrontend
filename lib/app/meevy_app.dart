@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'navigation/main_shell.dart';
+import 'theme/meevy_theme.dart';
 
 
 
@@ -47,7 +48,8 @@ class _MeevyAppState extends State<MeevyApp> {
     return MaterialApp(
       title: 'Meevy',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true),
+      // Applica il tema verde a tutta Meevy.
+      theme: MeevyTheme.light,
       home: Consumer<SessionViewModel>(
         builder: (context, session, _) {
           switch (session.status) {

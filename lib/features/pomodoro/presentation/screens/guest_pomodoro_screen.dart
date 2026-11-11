@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../widgets/guest_pomodoro_timer.dart';
 
 import '../../../../app/session/session_view_model.dart';
 
@@ -10,27 +11,28 @@ class GuestPomodoroScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Pomodoro ospite')),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.timer_outlined, size: 64),
-            const SizedBox(height: 16),
 
-            const Text('Pomodoro personale'),
-            const SizedBox(height: 8),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Timer locale, indipendente dal backend.
+              const GuestPomodoroTimer(),
 
-            const Text('Qui realizzeremo il timer locale.'),
+              const SizedBox(height: 28),
 
-            const SizedBox(height: 24),
-
-            OutlinedButton(
-              onPressed: () {
-                context.read<SessionViewModel>().exitGuestMode();
-              },
-              child: const Text('Torna al login'),
-            ),
-          ],
+              // Torna al login senza creare un account Guest.
+              OutlinedButton.icon(
+                onPressed: () {
+                  context.read<SessionViewModel>().exitGuestMode();
+                },
+                icon: const Icon(Icons.login),
+                label: const Text('Torna al login'),
+              ),
+            ],
+          ),
         ),
       ),
     );

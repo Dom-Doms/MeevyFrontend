@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../subject/data/repositories/subjects_repository.dart';
 import '../../../subject/presentation/view_models/subjects_view_model.dart';
 import '../view_models/pomodoro_view_model.dart';
+import 'pomodoro_timer_ring.dart';
 
 /*
  * Form per configurare una nuova sessione Pomodoro.
@@ -63,28 +64,86 @@ class _PomodoroSetupFormState extends State<PomodoroSetupForm> {
   }
 
   /*
-   * Costruisce un selettore riutilizzabile per le durate.
-   */
-  Widget _buildMinutesDropdown({
-    required String label,
+ * Card riutilizzabile per configurare le durate.
+ *
+ * I pulsanti + e - scorrono esclusivamente
+ * tra i valori consentiti dall'interfaccia.
+ */
+  Widget _buildDurationCard({
+    required IconData icon,
+    required String title,
     required int value,
     required List<int> options,
-    required ValueChanged<int?>? onChanged,
+    required ValueChanged<int> onChanged,
+    required bool enabled,
   }) {
-    return DropdownButtonFormField<int>(
-      initialValue: value,
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
+    final index = options.indexOf(value);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8E3EF)),
       ),
-      items: options.map((minutes) {
-        return DropdownMenuItem<int>(
-          value: minutes,
-          child: Text('$minutes min'),
-        );
-      }).toList(),
-      onChanged: onChanged,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: const Color(0xFF4D8B67)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF6C6672),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                onPressed: enabled && index > 0
+                    ? () => onChanged(options[index - 1])
+                    : null,
+                icon: const Icon(Icons.remove),
+                iconSize: 19,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+              ),
+
+              Text(
+                '$value min',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+
+              IconButton(
+                onPressed: enabled && index >= 0 && index < options.length - 1
+                    ? () => onChanged(options[index + 1])
+                    : null,
+                icon: const Icon(Icons.add),
+                iconSize: 19,
+                color: const Color(0xFF4D8B67),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -157,131 +216,126 @@ class _PomodoroSetupFormState extends State<PomodoroSetupForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-
-            const Text(
-              'Scegli la materia e configura '
-              'i tuoi intervalli di studio.',
+            // Anteprima grafica del timer.
+            // Non avvia alcuna sessione prima della creazione.
+            Center(
+              child: PomodoroTimerRing(
+                phaseLabel: 'Studio',
+                timeText: '${_studyMinutes.toString().padLeft(2, '0')}:00',
+                statusText: 'Anteprima',
+                progress: 0.0,
+              ),
             ),
 
             const SizedBox(height: 24),
 
-            // Selezione della materia.
-            DropdownButtonFormField<int>(
-              initialValue: _selectedSubjectId,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Materia',
-                border: OutlineInputBorder(),
-              ),
-              hint: const Text('Seleziona una materia'),
-              items: subjects.map((subject) {
-                return DropdownMenuItem<int>(
-                  value: subject.id,
-                  child: Text(subject.name, overflow: TextOverflow.ellipsis),
-                );
-              }).toList(),
-              onChanged: isBusy
-                  ? null
-                  : (value) {
-                      setState(() {
-                        _selectedSubjectId = value;
-                      });
-                    },
-            ),
-
-            const SizedBox(height: 20),
-
-            // Durata di studio e pausa.
+            // Durata dello studio e della pausa.
             Row(
               children: [
                 Expanded(
-                  child: _buildMinutesDropdown(
-                    label: 'Studio',
+                  child: _buildDurationCard(
+                    icon: Icons.menu_book_outlined,
+                    title: 'Durata studio',
                     value: _studyMinutes,
                     options: const [15, 25, 40, 50],
-                    onChanged: isBusy
-                        ? null
-                        : (value) {
-                            if (value == null) return;
-
-                            setState(() {
-                              _studyMinutes = value;
-                            });
-                          },
+                    enabled: !isBusy,
+                    onChanged: (value) {
+                      setState(() {
+                        _studyMinutes = value;
+                      });
+                    },
                   ),
                 ),
 
                 const SizedBox(width: 12),
 
                 Expanded(
-                  child: _buildMinutesDropdown(
-                    label: 'Pausa',
+                  child: _buildDurationCard(
+                    icon: Icons.free_breakfast_outlined,
+                    title: 'Pausa breve',
                     value: _breakMinutes,
                     options: const [5, 10, 15],
-                    onChanged: isBusy
-                        ? null
-                        : (value) {
-                            if (value == null) return;
-
-                            setState(() {
-                              _breakMinutes = value;
-                            });
-                          },
+                    enabled: !isBusy,
+                    onChanged: (value) {
+                      setState(() {
+                        _breakMinutes = value;
+                      });
+                    },
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // Obiettivo complessivo della sessione.
-            _buildMinutesDropdown(
-              label: 'Durata totale',
-              value: _targetMinutes,
-              options: const [30, 60, 120, 180, 240],
-              onChanged: isBusy
-                  ? null
-                  : (value) {
-                      if (value == null) return;
-
-                      setState(() {
-                        _targetMinutes = value;
-                      });
-                    },
-            ),
-
-            const SizedBox(height: 24),
-
-            // Riepilogo della configurazione.
+            // Materia associata alla sessione.
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE8E3EF)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  const Text(
-                    'Riepilogo',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  const Icon(Icons.school_outlined, color: Color(0xFF4D8B67)),
+
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _selectedSubjectId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Materia associata',
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      hint: const Text(
+                        'Seleziona una materia',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      items: subjects.map((subject) {
+                        return DropdownMenuItem<int>(
+                          value: subject.id,
+                          child: Text(
+                            subject.name,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: isBusy
+                          ? null
+                          : (value) {
+                              setState(() {
+                                _selectedSubjectId = value;
+                              });
+                            },
+                    ),
                   ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    '$_studyMinutes min studio · '
-                    '$_breakMinutes min pausa',
-                  ),
-
-                  Text('Obiettivo: $_targetMinutes minuti'),
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // Mostra gli errori della POST senza perdere il form.
+            // Obiettivo totale della sessione.
+            _buildDurationCard(
+              icon: Icons.access_time,
+              title: 'Obiettivo totale',
+              value: _targetMinutes,
+              options: const [30, 60, 120, 180, 240],
+              enabled: !isBusy,
+              onChanged: (value) {
+                setState(() {
+                  _targetMinutes = value;
+                });
+              },
+            ),
+
+            const SizedBox(height: 24),
+
+            // Errori della creazione, senza perdere il form.
             if (pomodoro.actionError != null) ...[
               Text(
                 pomodoro.actionError!,
@@ -296,13 +350,24 @@ class _PomodoroSetupFormState extends State<PomodoroSetupForm> {
               const SizedBox(height: 12),
             ],
 
-            FilledButton.icon(
-              onPressed: _selectedSubjectId == null || isBusy
-                  ? null
-                  : _createSession,
-              icon: const Icon(Icons.add),
-              label: Text(isBusy ? 'Creazione in corso...' : 'Crea sessione'),
+            // Crea la sessione tramite il ViewModel esistente.
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _selectedSubjectId == null || isBusy
+                    ? null
+                    : _createSession,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF4D8B67),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                icon: const Icon(Icons.add),
+                label: Text(isBusy ? 'Creazione in corso...' : 'Crea sessione'),
+              ),
             ),
+
+            const SizedBox(height: 20),
           ],
         );
       },

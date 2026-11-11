@@ -264,8 +264,8 @@ class PomodoroViewModel extends ChangeNotifier {
  * del caricamento iniziale.
  */
   Future<void> _executeAction(
-      Future<PomodoroSession?> Function() action,
-      ) async {
+    Future<PomodoroSession?> Function() action,
+  ) async {
     if (_isLoading || _isPerformingAction || _disposed) {
       return;
     }
