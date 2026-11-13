@@ -24,7 +24,7 @@ enum GroupRole {
   String get label {
     switch (this) {
       case GroupRole.owner:
-        return 'Creatore';
+        return 'Proprietario';
       case GroupRole.moderator:
         return 'Moderatore';
       case GroupRole.member:

@@ -3,6 +3,9 @@ import 'package:dio/dio.dart';
 
 import '../models/study_group.dart';
 
+import '../models/group_member.dart';
+
+
 /*
  * Gestisce l'accesso alle API dei gruppi.
  * Utilizza il client Dio autenticato dell'applicazione.
@@ -91,4 +94,29 @@ class GroupsRepository {
 
     return StudyGroup.fromJson(data);
   }
+
+
+// Recupera tutti i membri del gruppo.
+  Future<List<GroupMember>> getMembers(int groupId) async {
+    final response = await _dio.get<List<dynamic>>(
+      '/groups/$groupId/members',
+    );
+
+    final data = response.data;
+
+    if (data == null) {
+      throw const FormatException(
+        'Risposta dei membri non valida.',
+      );
+    }
+
+    return data
+        .map(
+          (item) => GroupMember.fromJson(
+        item as Map<String, dynamic>,
+      ),
+    )
+        .toList();
+  }
+
 }

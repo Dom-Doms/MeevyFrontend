@@ -4,27 +4,49 @@ import 'package:flutter/material.dart';
 import '../../data/models/group_role.dart';
 import '../../data/models/study_group.dart';
 
+
+import 'package:dio/dio.dart';
+import 'package:provider/provider.dart';
+
+import '../../data/repositories/groups_repository.dart';
+import '../view_models/group_members_view_model.dart';
+import '../widgets/group_dashboard.dart';
+import '../widgets/group_members_view.dart';
+import '../widgets/group_settings.dart';
+
+// Schermate disponibili all'interno del gruppo.
+enum GroupWorkspacePage {
+  chat,
+  dashboard,
+  members,
+  settings,
+}
+
+
 /*
  * Contenitore delle funzionalità di un gruppo.
  * Mostra inizialmente la chat e permette di
  * accedere alla dashboard dalla barra superiore.
  */
 class GroupWorkspaceScreen extends StatelessWidget {
+
   final StudyGroup group;
-  final bool showDashboard;
+  final GroupWorkspacePage page;
 
   final VoidCallback onBack;
-  final VoidCallback onOpenDashboard;
+  final ValueChanged<GroupWorkspacePage> onOpenPage;
   final VoidCallback? onEdit;
 
   const GroupWorkspaceScreen({
     super.key,
     required this.group,
-    required this.showDashboard,
+    required this.page,
     required this.onBack,
-    required this.onOpenDashboard,
+    required this.onOpenPage,
     required this.onEdit,
   });
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -35,47 +57,39 @@ class GroupWorkspaceScreen extends StatelessWidget {
           onPressed: onBack,
         ),
 
-        // Il nome del gruppo apre la dashboard.
-        title: showDashboard
-            ? Text(group.name)
-            : InkWell(
-          onTap: onOpenDashboard,
-          child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
-            children: [
-              Text(
-                group.name,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                '${group.memberCount} membri'
-                    ' · Informazioni gruppo',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall,
-              ),
-            ],
-          ),
-        ),
+        title: _buildTitle(context),
 
         actions: [
-          if (!showDashboard)
+          // Dalla chat si accede alla dashboard.
+          if (page == GroupWorkspacePage.chat)
             IconButton(
               tooltip: 'Dashboard del gruppo',
-              onPressed: onOpenDashboard,
+              onPressed: () {
+                onOpenPage(GroupWorkspacePage.dashboard);
+              },
               icon: const Icon(
                 Icons.dashboard_outlined,
+              ),
+            ),
+
+          // Accesso rapido alle impostazioni.
+          if (page == GroupWorkspacePage.dashboard)
+            IconButton(
+              tooltip: 'Impostazioni',
+              onPressed: () {
+                onOpenPage(GroupWorkspacePage.settings);
+              },
+              icon: const Icon(
+                Icons.settings_outlined,
               ),
             ),
         ],
       ),
 
-      body: showDashboard
-          ? _buildDashboard(context)
-          : _buildChat(context),
+      body: _buildPage(),
     );
   }
+
 
   /*
    * Struttura della chat.
@@ -134,80 +148,83 @@ class GroupWorkspaceScreen extends StatelessWidget {
     );
   }
 
-  // Mostra le informazioni e le azioni consentite.
-  Widget _buildDashboard(BuildContext context) {
-    final description = group.description;
-    final isOwner = group.myRole == GroupRole.owner;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Center(
-          child: CircleAvatar(
-            radius: 36,
-            backgroundColor: Theme.of(context)
-                .colorScheme
-                .primaryContainer,
-            child: const Icon(
-              Icons.groups,
-              size: 36,
-            ),
+
+
+// Costruisce il titolo in base alla schermata aperta.
+  Widget _buildTitle(BuildContext context) {
+    switch (page) {
+      case GroupWorkspacePage.chat:
+        final memberLabel = group.memberCount == 1
+            ? '1 membro'
+            : '${group.memberCount} membri';
+
+        return InkWell(
+          onTap: () {
+            onOpenPage(GroupWorkspacePage.dashboard);
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                group.name,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '$memberLabel · Informazioni gruppo',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall,
+              ),
+            ],
           ),
-        ),
+        );
 
-        const SizedBox(height: 16),
+      case GroupWorkspacePage.dashboard:
+        return Text(group.name);
 
-        Text(
-          group.name,
-          textAlign: TextAlign.center,
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall,
-        ),
+      case GroupWorkspacePage.members:
+        return const Text('Membri');
 
-        const SizedBox(height: 8),
-
-        Center(
-          child: Chip(
-            label: Text(group.myRole.label),
-          ),
-        ),
-
-        const SizedBox(height: 24),
-
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('Descrizione'),
-            subtitle: Text(
-              description == null ||
-                  description.isEmpty
-                  ? 'Nessuna descrizione.'
-                  : description,
-            ),
-          ),
-        ),
-
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.people_outline),
-            title: const Text('Membri del gruppo'),
-            subtitle: Text(
-              '${group.memberCount} partecipanti',
-            ),
-          ),
-        ),
-
-        // Il backend permette la modifica solo all'OWNER.
-        if (isOwner) ...[
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined),
-            label: const Text('Modifica gruppo'),
-          ),
-        ],
-      ],
-    );
+      case GroupWorkspacePage.settings:
+        return const Text('Impostazioni');
+    }
   }
+
+// Seleziona il contenuto della schermata.
+  Widget _buildPage() {
+    switch (page) {
+      case GroupWorkspacePage.chat:
+        return Builder(
+          builder: _buildChat,
+        );
+
+      case GroupWorkspacePage.dashboard:
+        return GroupDashboard(
+          group: group,
+          onOpenMembers: () {
+            onOpenPage(GroupWorkspacePage.members);
+          },
+          onOpenSettings: () {
+            onOpenPage(GroupWorkspacePage.settings);
+          },
+        );
+
+      case GroupWorkspacePage.members:
+        return ChangeNotifierProvider(
+          create: (context) => GroupMembersViewModel(
+            GroupsRepository(context.read<Dio>()),
+            group.id,
+          )..load(),
+          child: const GroupMembersView(),
+        );
+
+      case GroupWorkspacePage.settings:
+        return GroupSettings(
+          group: group,
+          onEdit: onEdit,
+        );
+    }
+  }
+
 }

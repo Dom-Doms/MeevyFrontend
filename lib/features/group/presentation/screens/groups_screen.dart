@@ -20,29 +20,44 @@ class GroupsScreen extends StatefulWidget {
 
 class _GroupsScreenState extends State<GroupsScreen> {
   int? _selectedGroupId;
-  bool _showDashboard = false;
+  GroupWorkspacePage _page = GroupWorkspacePage.chat;
+
 
   // Apre il gruppo mostrando inizialmente la chat.
   void _openGroup(StudyGroup group) {
     setState(() {
       _selectedGroupId = group.id;
-      _showDashboard = false;
+      _page = GroupWorkspacePage.chat;
     });
   }
 
-  /*
-   * Dalla dashboard torna alla chat.
-   * Dalla chat torna all'elenco dei gruppi.
-   */
+
+/*
+ * Gestisce la navigazione all'indietro.
+ *
+ * Membri/Impostazioni -> Dashboard
+ * Dashboard -> Chat
+ * Chat -> Elenco gruppi
+ */
   void _goBack() {
     setState(() {
-      if (_showDashboard) {
-        _showDashboard = false;
-      } else {
-        _selectedGroupId = null;
+      switch (_page) {
+        case GroupWorkspacePage.members:
+        case GroupWorkspacePage.settings:
+          _page = GroupWorkspacePage.dashboard;
+          break;
+
+        case GroupWorkspacePage.dashboard:
+          _page = GroupWorkspacePage.chat;
+          break;
+
+        case GroupWorkspacePage.chat:
+          _selectedGroupId = null;
+          break;
       }
     });
   }
+
 
   // Mostra il form e delega il salvataggio al ViewModel.
   Future<void> _showGroupForm({
@@ -96,6 +111,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
      * Mantiene la navigazione del gruppo dentro
      * la sezione Gruppi della MainShell.
      */
+
     if (selectedGroup != null) {
       return PopScope(
         canPop: false,
@@ -104,13 +120,17 @@ class _GroupsScreenState extends State<GroupsScreen> {
         },
         child: GroupWorkspaceScreen(
           group: selectedGroup,
-          showDashboard: _showDashboard,
+
+          page: _page,
+
           onBack: _goBack,
-          onOpenDashboard: () {
+
+          onOpenPage: (newPage) {
             setState(() {
-              _showDashboard = true;
+              _page = newPage;
             });
           },
+
           onEdit: viewModel.isSaving
               ? null
               : () => _showGroupForm(
@@ -119,6 +139,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
         ),
       );
     }
+
 
     return Scaffold(
       appBar: AppBar(
