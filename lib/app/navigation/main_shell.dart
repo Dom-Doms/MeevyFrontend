@@ -13,6 +13,12 @@ import '../../features/pomodoro/data/repositories/pomodoro_repository.dart';
 import '../../features/pomodoro/presentation/view_models/pomodoro_view_model.dart';
 import '../../features/pomodoro/presentation/screens/pomodoro_screen.dart';
 
+
+import '../../features/group/data/repositories/groups_repository.dart';
+import '../../features/group/presentation/screens/groups_screen.dart';
+import '../../features/group/presentation/view_models/groups_view_model.dart';
+
+
 /*
  * Contenitore principale dell'utente autenticato.
  *
@@ -41,9 +47,11 @@ class _MainShellState extends State<MainShell> {
         );
 
       case 1:
-        return const _PlaceholderScreen(
-          title: 'Gruppi',
-          message: 'Qui gestiremo i gruppi di studio.',
+        return ChangeNotifierProvider(
+          create: (context) => GroupsViewModel(
+            GroupsRepository(context.read<Dio>()),
+          )..load(),
+          child: const GroupsScreen(),
         );
 
       case 2:
