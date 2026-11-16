@@ -20,12 +20,14 @@ class SubjectDetailScreen extends StatelessWidget {
   final Subject subject;
   final VoidCallback onBack;
   final VoidCallback? onRename;
+  final VoidCallback? onDelete;
 
   const SubjectDetailScreen({
     super.key,
     required this.subject,
     required this.onBack,
     required this.onRename,
+    required this.onDelete,
   });
 
   @override
@@ -54,6 +56,13 @@ class SubjectDetailScreen extends StatelessWidget {
                 onPressed: onRename,
                 icon: const Icon(Icons.edit_outlined),
               ),
+
+              IconButton(
+                tooltip: 'Elimina materia',
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline),
+              ),
+
             ],
           ),
 

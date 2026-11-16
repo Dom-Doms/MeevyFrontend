@@ -35,6 +35,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
   int? _selectedSubjectId;
   bool _ascending = true;
 
+
   // Filtra e ordina una copia dell'elenco originale.
   List<Subject> _visibleSubjects(List<Subject> subjects) {
     final query = _searchController.text
@@ -140,8 +141,12 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Elimina materia?'),
+//TODO cambiare la scritta dell'elimina
           content: Text(
-            'Vuoi eliminare "${subject.name}"? '
+            'Vuoi eliminare "${subject.name}"?\n\n'
+                'Gli appunti e le flashcard rimarranno salvati, '
+                'ma non saranno più associati a questa materia. '
+                'La checklist verrà eliminata.\n\n'
                 'L’operazione non può essere annullata.',
           ),
           actions: [
@@ -227,28 +232,16 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
               : () => _showSubjectForm(
             subject: selectedSubject,
           ),
+
+          onDelete: viewModel.isSaving
+              ? null
+              : () => _deleteSubject(selectedSubject),
+
         ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Icon(
-              Icons.school_outlined,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'Meevy',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
 
       floatingActionButton: FloatingActionButton(
         tooltip: 'Aggiungi materia',
@@ -259,18 +252,22 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
         child: const Icon(Icons.add),
       ),
 
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(context),
 
-          if (viewModel.isSaving)
-            const LinearProgressIndicator(),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(context),
 
-          Expanded(
-            child: _buildSubjects(viewModel),
-          ),
-        ],
+            if (viewModel.isSaving)
+              const LinearProgressIndicator(),
+
+            Expanded(
+              child: _buildSubjects(viewModel),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -293,14 +290,6 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
             ),
           ),
 
-          const SizedBox(height: 6),
-
-          Text(
-            'Qui trovi tutte le materie che stai studiando.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
 
           const SizedBox(height: 20),
 
@@ -422,13 +411,14 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
         gridDelegate:
         const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 240,
-          mainAxisExtent: 190,
+          mainAxisExtent: 140,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
         itemCount: subjects.length,
         itemBuilder: (context, index) {
           final subject = subjects[index];
+
 
           return SubjectCard(
             key: ValueKey(subject.id),
@@ -439,11 +429,8 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                 _selectedSubjectId = subject.id;
               });
             },
-            onRename: () => _showSubjectForm(
-              subject: subject,
-            ),
-            onDelete: () => _deleteSubject(subject),
           );
+
         },
       ),
     );

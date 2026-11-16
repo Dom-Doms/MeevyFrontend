@@ -57,25 +57,25 @@ class SubjectIcon extends StatelessWidget {
 class SubjectCard extends StatelessWidget {
   final Subject subject;
   final VoidCallback onOpen;
-  final VoidCallback onRename;
-  final VoidCallback onDelete;
+  //final VoidCallback onRename;
+  //final VoidCallback onDelete;
   final bool isSaving;
+
 
   const SubjectCard({
     super.key,
     required this.subject,
     required this.onOpen,
-    required this.onRename,
-    required this.onDelete,
     this.isSaving = false,
   });
+
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Material(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
@@ -84,43 +84,14 @@ class SubjectCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onOpen,
+        // Tutta la card permette di aprire la materia.
+        onTap: isSaving ? null : onOpen,
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
-                children: [
-                  SubjectIcon(subject: subject),
-                  PopupMenuButton<SubjectAction>(
-                    enabled: !isSaving,
-                    tooltip: 'Gestisci materia',
-                    onSelected: (action) {
-                      switch (action) {
-                        case SubjectAction.rename:
-                          onRename();
-                          break;
-                        case SubjectAction.delete:
-                          onDelete();
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(
-                        value: SubjectAction.rename,
-                        child: Text('Rinomina'),
-                      ),
-                      PopupMenuItem(
-                        value: SubjectAction.delete,
-                        child: Text('Elimina'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              SubjectIcon(subject: subject),
 
               const SizedBox(height: 12),
 
@@ -129,27 +100,8 @@ class SubjectCard extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
-              ),
-
-              const Spacer(),
-
-              const Divider(height: 16),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Apri materia',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right,
-                    size: 18,
-                  ),
-                ],
               ),
             ],
           ),
@@ -157,4 +109,5 @@ class SubjectCard extends StatelessWidget {
       ),
     );
   }
+
 }
