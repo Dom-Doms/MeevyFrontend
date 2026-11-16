@@ -31,9 +31,7 @@ class PomodoroScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
 
-                  const SizedBox(height: 8),
 
-                  const Text('Concentrati sui tuoi obiettivi di studio.'),
 
                   const SizedBox(height: 32),
 

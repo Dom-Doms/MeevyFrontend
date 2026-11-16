@@ -5,18 +5,26 @@ import 'package:provider/provider.dart';
 
 import '../session/session_view_model.dart';
 
+//subjects
 import '../../features/subject/data/repositories/subjects_repository.dart';
 import '../../features/subject/presentation/screens/subjects_screen.dart';
 import '../../features/subject/presentation/view_models/subjects_view_model.dart';
 
+//timer
 import '../../features/pomodoro/data/repositories/pomodoro_repository.dart';
 import '../../features/pomodoro/presentation/view_models/pomodoro_view_model.dart';
 import '../../features/pomodoro/presentation/screens/pomodoro_screen.dart';
 
-
+//gruppi
 import '../../features/group/data/repositories/groups_repository.dart';
 import '../../features/group/presentation/screens/groups_screen.dart';
 import '../../features/group/presentation/view_models/groups_view_model.dart';
+
+
+//Profilo
+import '../../features/profile/data/repositories/profile_repository.dart';
+import '../../features/profile/presentation/view_models/profile_view_model.dart';
+import '../../features/profile/presentation/screens/profile_screen.dart';
 
 
 /*
@@ -63,7 +71,12 @@ class _MainShellState extends State<MainShell> {
         );
 
       case 3:
-        return const _ProfileScreen();
+        return ChangeNotifierProvider(
+          create: (context) => ProfileViewModel(
+            ProfileRepository(context.read<Dio>()),
+          )..loadProfile(),
+          child: const ProfileScreen(),
+        );
 
       default:
         throw StateError('Tab non valida.');
@@ -131,26 +144,4 @@ class _PlaceholderScreen extends StatelessWidget {
   }
 }
 
-/*
- * Prima versione del profilo.
- * Per ora permette soltanto il logout.
- */
-class _ProfileScreen extends StatelessWidget {
-  const _ProfileScreen();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profilo')),
-      body: Center(
-        child: FilledButton.icon(
-          onPressed: () {
-            context.read<SessionViewModel>().logout();
-          },
-          icon: const Icon(Icons.logout),
-          label: const Text('Esci'),
-        ),
-      ),
-    );
-  }
-}

@@ -30,7 +30,25 @@ class _PomodoroSetupFormState extends State<PomodoroSetupForm> {
 
   int _studyMinutes = 25;
   int _breakMinutes = 5;
-  int _targetMinutes = 120;
+
+  int _cycleCount = 4;
+
+// La durata totale è calcolata, non scelta dall'utente.
+// Ogni ciclo comprende una fase di studio e una pausa.
+  int get _targetMinutes =>
+      (_studyMinutes + _breakMinutes) * _cycleCount;
+
+// Mostra la durata in ore e minuti.
+  String get _formattedTotalDuration {
+    final hours = _targetMinutes ~/ 60;
+    final minutes = _targetMinutes % 60;
+
+    if (hours == 0) return '$minutes min';
+    if (minutes == 0) return '$hours h';
+
+    return '$hours h $minutes min';
+  }
+
 
   @override
   void initState() {
@@ -76,6 +94,7 @@ class _PomodoroSetupFormState extends State<PomodoroSetupForm> {
     required List<int> options,
     required ValueChanged<int> onChanged,
     required bool enabled,
+    String Function(int)? formatValue,
   }) {
     final index = options.indexOf(value);
 
@@ -123,7 +142,7 @@ class _PomodoroSetupFormState extends State<PomodoroSetupForm> {
               ),
 
               Text(
-                '$value min',
+                formatValue?.call(value) ?? '$value min',
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
@@ -319,19 +338,65 @@ class _PomodoroSetupFormState extends State<PomodoroSetupForm> {
 
             const SizedBox(height: 16),
 
-            // Obiettivo totale della sessione.
+
+// Numero di cicli che l'utente vuole completare.
             _buildDurationCard(
-              icon: Icons.access_time,
-              title: 'Obiettivo totale',
-              value: _targetMinutes,
-              options: const [30, 60, 120, 180, 240],
+              icon: Icons.repeat,
+              title: 'Numero di cicli',
+              value: _cycleCount,
+              options: const [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
               enabled: !isBusy,
+              formatValue: (value) =>
+              value == 1 ? '1 ciclo' : '$value cicli',
               onChanged: (value) {
                 setState(() {
-                  _targetMinutes = value;
+                  _cycleCount = value;
                 });
               },
             ),
+
+            const SizedBox(height: 12),
+
+// Riepilogo aggiornato automaticamente.
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2F7F3),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Durata complessiva',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF6C6672),
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  Text(
+                    _formattedTotalDuration,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF4D8B67),
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    '${_studyMinutes * _cycleCount} min di studio + '
+                        '${_breakMinutes * _cycleCount} min di pausa',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+
 
             const SizedBox(height: 24),
 
