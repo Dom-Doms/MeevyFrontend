@@ -155,13 +155,16 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
       SubjectNotesViewModel viewModel,
       ) async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+
+      final result = await FilePicker.pickFiles(
         allowMultiple: true,
         withData: false,
       );
 
+// Se l'utente annulla, non viene restituito alcun risultato.
       if (result == null || !mounted) return;
 
+// Nella versione 11, i file sono contenuti in result.files.
       await viewModel.uploadFiles(result.files);
 
       if (!mounted) return;

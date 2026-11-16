@@ -10,6 +10,16 @@ import '../../../resource/data/repositories/resources_repository.dart';
 import '../../../resource/presentation/view_models/subject_notes_view_model.dart';
 import '../../../resource/presentation/widgets/subject_notes_tab.dart';
 
+
+import '../../../checklist/data/repositories/checklist_repository.dart';
+import '../../../checklist/presentation/view_models/checklist_view_model.dart';
+import '../../../checklist/presentation/widgets/subject_checklist_tab.dart';
+
+import '../../../flashcard/data/repositories/flashcards_repository.dart';
+import '../../../flashcard/presentation/view_models/subject_flashcards_view_model.dart';
+import '../../../flashcard/presentation/widgets/subject_flashcards_tab.dart';
+
+
 /*
  * Contenitore delle funzionalità di una singola materia.
  *
@@ -34,11 +44,34 @@ class SubjectDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return ChangeNotifierProvider(
-      create: (context) => SubjectNotesViewModel(
-        ResourcesRepository(context.read<Dio>()),
-        subject.id,
-      )..load(),
+
+    return MultiProvider(
+      providers: [
+        // Appunti personali della materia.
+        ChangeNotifierProvider(
+          create: (context) => SubjectNotesViewModel(
+            ResourcesRepository(context.read<Dio>()),
+            subject.id,
+          )..load(),
+        ),
+
+        // Checklist personale della materia.
+        ChangeNotifierProvider(
+          create: (context) => ChecklistViewModel(
+            ChecklistRepository(context.read<Dio>()),
+            subject.id,
+          )..load(),
+        ),
+
+        // Flashcard personali della materia.
+        ChangeNotifierProvider(
+          create: (context) => SubjectFlashcardsViewModel(
+            FlashcardsRepository(context.read<Dio>()),
+            subject.id,
+          )..load(),
+        ),
+      ],
+
 
       child: DefaultTabController(
         length: 3,
@@ -127,27 +160,17 @@ class SubjectDetailScreen extends StatelessWidget {
                * Viene visualizzato un solo contenuto
                * alla volta, in base alla tab selezionata.
                */
+
               const Expanded(
                 child: TabBarView(
                   children: [
                     SubjectNotesTab(),
-
-                    // Verrà collegata alla feature di Rita.
-                    Center(
-                      child: Text(
-                        'Checklist non ancora disponibile.',
-                      ),
-                    ),
-
-                    // Verrà sostituita dalla tab Flashcard.
-                    Center(
-                      child: Text(
-                        'Flashcard non ancora disponibili.',
-                      ),
-                    ),
+                    SubjectChecklistTab(),
+                    SubjectFlashcardsTab(),
                   ],
                 ),
               ),
+
             ],
           ),
         ),

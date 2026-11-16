@@ -94,13 +94,17 @@ class SubjectNotesViewModel extends ChangeNotifier {
       for (final file in files) {
         if (_disposed) return;
 
-        // I file devono avere un percorso accessibile.
+
+        // Ogni file deve avere un percorso valido,
+        // essere non vuoto e rispettare il limite di 20 MB.
         if (file.path == null ||
             file.size == 0 ||
             file.size > maxFileSize) {
           failed++;
           continue;
         }
+
+
 
         try {
           await _repository.upload(
