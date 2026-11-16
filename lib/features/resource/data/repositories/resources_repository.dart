@@ -37,4 +37,39 @@ class ResourcesRepository {
       );
     }).toList();
   }
+
+
+// Carica un file personale associandolo alla materia.Usa multipart/form-data
+
+
+  Future<PersonalResource> upload({
+    required int subjectId,
+    required String filePath,
+    required String filename,
+  }) async {
+    final formData = FormData.fromMap({
+      'subjectId': subjectId,
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: filename,
+      ),
+    });
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/resources',
+      data: formData,
+    );
+
+    final data = response.data;
+
+    if (data == null) {
+      throw const FormatException(
+        'Risposta del caricamento non valida.',
+      );
+    }
+
+    return PersonalResource.fromJson(data);
+  }
+
+
 }

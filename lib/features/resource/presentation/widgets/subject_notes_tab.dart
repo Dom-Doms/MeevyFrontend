@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import '../../data/models/personal_resource.dart';
 import '../view_models/subject_notes_view_model.dart';
 
+import 'package:file_picker/file_picker.dart';
+
+
 /*
  * Contenuto della tab Appunti.
  * Visualizza soltanto i file della materia selezionata.
@@ -61,7 +64,10 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
       ),
       child: Icon(icon, color: color),
     );
+
+
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -74,56 +80,112 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
           .contains(_query.toLowerCase().trim());
     }).toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            16, 16, 16, 12,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Appunti',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                16, 16, 16, 12,
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Appunti',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
 
-              const SizedBox(height: 4),
+                  const SizedBox(height: 16),
 
-              Text(
-                'Tutti i tuoi file, sempre a portata di mano.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                  TextField(
+                    onChanged: (value) {
+                      setState(() => _query = value);
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Cerca un file...',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                  ),
+                ],
               ),
+            ),
 
-              const SizedBox(height: 16),
+            if (viewModel.isUploading)
+              const LinearProgressIndicator(),
 
-              TextField(
-                onChanged: (value) {
-                  setState(() => _query = value);
-                },
-                decoration: const InputDecoration(
-                  hintText: 'Cerca un file...',
-                  prefixIcon: Icon(Icons.search),
-                ),
+            Expanded(
+              child: _buildResourceList(
+                viewModel,
+                resources,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
 
-        Expanded(
-          child: _buildResourceList(
-            viewModel,
-            resources,
+        // Il pulsante compare soltanto nella tab Appunti.
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton(
+            heroTag: 'upload_appunti',
+            tooltip: 'Carica appunti',
+            onPressed: viewModel.isUploading
+                ? null
+                : () => _pickAndUpload(viewModel),
+            child: viewModel.isUploading
+                ? const CircularProgressIndicator()
+                : const Icon(Icons.add),
           ),
         ),
       ],
     );
   }
+
+
+
+/*
+ * Apre il selettore dei file Android.
+ * Delega il caricamento al ViewModel della materia.
+ */
+  Future<void> _pickAndUpload(
+      SubjectNotesViewModel viewModel,
+      ) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        withData: false,
+      );
+
+      if (result == null || !mounted) return;
+
+      await viewModel.uploadFiles(result.files);
+
+      if (!mounted) return;
+
+      final message = viewModel.uploadMessage;
+
+      if (message != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Impossibile selezionare i documenti.',
+          ),
+        ),
+      );
+    }
+  }
+
 
   Widget _buildResourceList(
       SubjectNotesViewModel viewModel,
