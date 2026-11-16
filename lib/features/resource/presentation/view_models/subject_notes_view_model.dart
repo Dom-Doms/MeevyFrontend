@@ -7,6 +7,11 @@ import '../../data/repositories/resources_repository.dart';
 import 'package:file_picker/file_picker.dart';
 
 
+import 'dart:typed_data';
+import 'package:dio/dio.dart';
+
+
+
 /*
  * Gestisce gli appunti appartenenti a una materia.
  * Conserva elenco, caricamento ed eventuali errori.
@@ -22,6 +27,14 @@ class SubjectNotesViewModel extends ChangeNotifier {
 
   bool _isUploading = false;
   String? _uploadMessage;
+
+// Stato del download di un documento.
+  bool _isDownloading = false;
+  String? _downloadError;
+
+  bool get isDownloading => _isDownloading;
+  String? get downloadError => _downloadError;
+
 
   bool get isUploading => _isUploading;
   String? get uploadMessage => _uploadMessage;
@@ -147,6 +160,68 @@ class SubjectNotesViewModel extends ChangeNotifier {
     } finally {
       if (!_disposed) {
         _isUploading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+
+/*
+ * Recupera i byte di un documento tramite il Repository.
+ *
+ * Verifica che il contenuto scaricato abbia la dimensione
+ * registrata nel database, evitando file incompleti.
+ *
+ * Il salvataggio sul dispositivo resta responsabilità
+ * della View, che interagisce con il selettore Android.
+ */
+  Future<Uint8List?> download(
+      PersonalResource resource,
+      ) async {
+    if (_isDownloading || _disposed) return null;
+
+    _isDownloading = true;
+    _downloadError = null;
+    notifyListeners();
+
+    try {
+      final bytes = await _repository.download(resource.id);
+
+      if (_disposed) return null;
+
+      // Impedisce di salvare un documento incompleto.
+      if (bytes.lengthInBytes != resource.sizeBytes) {
+        _downloadError =
+        'Il file scaricato è incompleto. Riprova.';
+        return null;
+      }
+
+      return bytes;
+    } on DioException catch (error) {
+      if (_disposed) return null;
+
+      if (error.response?.statusCode == 404) {
+        _downloadError =
+        'Il documento non è più disponibile.';
+      } else if (error.response == null) {
+        _downloadError =
+        'Impossibile contattare il server.';
+      } else {
+        _downloadError =
+        'Impossibile scaricare il documento.';
+      }
+
+      return null;
+    } catch (_) {
+      if (!_disposed) {
+        _downloadError =
+        'Si è verificato un errore durante il download.';
+      }
+
+      return null;
+    } finally {
+      if (!_disposed) {
+        _isDownloading = false;
         notifyListeners();
       }
     }

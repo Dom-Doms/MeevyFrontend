@@ -137,30 +137,45 @@ class SubjectChecklistTab extends StatelessWidget {
       );
     }
 
+
     if (!viewModel.hasChecklist) {
-      return Center(
-        child: FilledButton.icon(
-          onPressed: viewModel.isSaving
-              ? null
-              : () async {
-            if (!await viewModel.create() &&
-                context.mounted) {
-              _showError(context, viewModel);
-            }
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('Crea checklist'),
-        ),
+      return Stack(
+        children: [
+          const Center(
+            child: Text('Nessuna checklist per questa materia.'),
+          ),
+
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton(
+              heroTag: 'create_subject_checklist',
+              tooltip: 'Crea checklist',
+              onPressed: viewModel.isSaving
+                  ? null
+                  : () async {
+                if (!await viewModel.create() &&
+                    context.mounted) {
+                  _showError(context, viewModel);
+                }
+              },
+              child: const Icon(Icons.add),
+            ),
+          ),
+        ],
       );
     }
+
 
     final completed = viewModel.items
         .where((item) => item.completed)
         .length;
 
-    return Column(
-      children: [
-        Padding(
+    return Stack(
+        children: [
+    Column(
+    children: [
+        /*Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -184,13 +199,26 @@ class SubjectChecklistTab extends StatelessWidget {
             ],
           ),
         ),
+*/
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '$completed/${viewModel.items.length} completate',
+            ),
+          ),
+        ),
+
+        if (viewModel.isSaving)
+          const LinearProgressIndicator(),
 
         Expanded(
           child: RefreshIndicator(
             onRefresh: viewModel.load,
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
               itemCount: viewModel.items.length,
               itemBuilder: (context, index) {
                 final item = viewModel.items[index];
@@ -233,7 +261,26 @@ class SubjectChecklistTab extends StatelessWidget {
             ),
           ),
         ),
-      ],
+
+    ],
+    ),
+
+          // Pulsante fisso in basso a destra.
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton(
+              heroTag: 'add_checklist_item',
+              tooltip: 'Aggiungi attività',
+              onPressed: viewModel.isSaving
+                  ? null
+                  : () => _edit(context, viewModel),
+              child: const Icon(Icons.add),
+            ),
+          ),
+        ],
     );
+
+
   }
 }

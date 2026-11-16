@@ -1,6 +1,9 @@
 
 import 'package:dio/dio.dart';
 
+
+import 'dart:typed_data';
+
 import '../models/personal_resource.dart';
 
 /*
@@ -69,6 +72,35 @@ class ResourcesRepository {
     }
 
     return PersonalResource.fromJson(data);
+  }
+
+
+/*
+ * Scarica il contenuto di un documento personale.
+ *
+ * Dio utilizza il JWT tramite l'interceptor già configurato.
+ * ResponseType.bytes evita di interpretare PDF, immagini
+ * o altri file binari come testo o JSON.
+ */
+  Future<Uint8List> download(int resourceId) async {
+    final response = await _dio.get<List<int>>(
+      '/resources/$resourceId/download',
+      options: Options(
+        responseType: ResponseType.bytes,
+      ),
+    );
+
+    final data = response.data;
+
+    if (data == null || data.isEmpty) {
+      throw const FormatException(
+        'Il documento scaricato è vuoto.',
+      );
+    }
+
+    return data is Uint8List
+        ? data
+        : Uint8List.fromList(data);
   }
 
 

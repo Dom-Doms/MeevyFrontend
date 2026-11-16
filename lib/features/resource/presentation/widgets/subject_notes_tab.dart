@@ -23,6 +23,10 @@ class SubjectNotesTab extends StatefulWidget {
 class _SubjectNotesTabState extends State<SubjectNotesTab> {
   String _query = '';
 
+// ID del documento che stiamo scaricando o salvando.
+  int? _activeDownloadId;
+
+
   // Rappresenta la dimensione del file in formato leggibile.
   String _formatSize(int bytes) {
     if (bytes < 1024) {
@@ -92,15 +96,6 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Appunti',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
                   TextField(
                     onChanged: (value) {
                       setState(() => _query = value);
@@ -186,6 +181,84 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
           ),
         ),
       );
+    }
+  }
+
+
+/*
+ * Scarica il documento dal server e apre
+ * il selettore di salvataggio del dispositivo.
+ *
+ * Se l'utente annulla il salvataggio,
+ * non viene mostrato alcun messaggio di errore.
+ */
+  Future<void> _downloadResource(
+      PersonalResource resource,
+      SubjectNotesViewModel viewModel,
+      ) async {
+    if (_activeDownloadId != null) return;
+
+    setState(() {
+      _activeDownloadId = resource.id;
+    });
+
+    try {
+      // Recupera i byte tramite ViewModel e Repository.
+      final bytes = await viewModel.download(resource);
+
+      if (!mounted) return;
+
+      if (bytes == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              viewModel.downloadError ??
+                  'Download non riuscito.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      /*
+     * Apre il selettore di salvataggio.
+     * Su Android i byte vengono scritti nella
+     * destinazione scelta dall'utente.
+     */
+      final savedPath = await FilePicker.saveFile(
+        dialogTitle: 'Salva appunto',
+        fileName: resource.originalFilename,
+        bytes: bytes,
+      );
+
+      if (!mounted) return;
+
+      // L'utente può annullare senza salvare nulla.
+      if (savedPath == null) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${resource.originalFilename} salvato correttamente.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Impossibile salvare il documento.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _activeDownloadId = null;
+        });
+      }
     }
   }
 
@@ -288,6 +361,32 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
               subtitle: Text(
                 '${_formatSize(resource.sizeBytes)} · $date',
               ),
+
+// Permette di scaricare il singolo documento.
+              trailing: IconButton(
+                tooltip: 'Scarica ${resource.originalFilename}',
+
+                onPressed: _activeDownloadId != null ||
+                    viewModel.isUploading
+                    ? null
+                    : () => _downloadResource(
+                  resource,
+                  viewModel,
+                ),
+
+                icon: _activeDownloadId == resource.id
+                    ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                  ),
+                )
+                    : const Icon(
+                  Icons.download_outlined,
+                ),
+              ),
+
             ),
           );
         },

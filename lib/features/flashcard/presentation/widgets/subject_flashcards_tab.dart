@@ -167,28 +167,10 @@ class SubjectFlashcardsTab extends StatelessWidget {
       );
     }
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Flashcard',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-              ),
-              FilledButton.icon(
-                onPressed: viewModel.isSaving
-                    ? null
-                    : () => _showForm(context, viewModel),
-                icon: const Icon(Icons.add),
-                label: const Text('Crea'),
-              ),
-            ],
-          ),
-        ),
+    return Stack(
+        children: [
+    Column(
+    children: [
 
         if (viewModel.isSaving)
           const LinearProgressIndicator(),
@@ -198,7 +180,7 @@ class SubjectFlashcardsTab extends StatelessWidget {
             onRefresh: viewModel.load,
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
               itemCount: viewModel.cards.length,
               itemBuilder: (context, index) {
                 final card = viewModel.cards[index];
@@ -262,7 +244,24 @@ class SubjectFlashcardsTab extends StatelessWidget {
             ),
           ),
         ),
-      ],
+
+    ],
+    ),
+
+          // Crea una flashcard nella materia corrente.
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton(
+              heroTag: 'add_personal_flashcard',
+              tooltip: 'Crea flashcard',
+              onPressed: viewModel.isSaving
+                  ? null
+                  : () => _showForm(context, viewModel),
+              child: const Icon(Icons.add),
+            ),
+          ),
+        ],
     );
   }
 }
