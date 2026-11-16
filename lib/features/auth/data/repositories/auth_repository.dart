@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import '../models/login_response.dart';
 import '../services/auth_api_service.dart';
 import '../services/token_storage.dart';
+import '../models/register_request.dart';
+import '../models/register_response.dart';
 
 /*
  * Gestisce i token e il ciclo di vita dell'autenticazione.
@@ -29,6 +31,13 @@ class AuthRepository extends ChangeNotifier {
   bool get isAuthenticated => accessToken != null;
 
   int get sessionVersion => _sessionVersion;
+
+
+// Delega la registrazione al servizio API senza modificare la sessione dell'utente.
+  Future<RegisterResponse> register(RegisterRequest request) {
+    return _apiService.register(request);
+  }
+
 
   // Autentica l'utente e memorizza i token ricevuti.
   Future<void> login({

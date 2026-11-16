@@ -1,5 +1,7 @@
 
 import 'package:dio/dio.dart';
+import '../models/register_request.dart';
+import '../models/register_response.dart';
 
 import '../models/login_response.dart';
 
@@ -32,6 +34,28 @@ class AuthApiService {
 
     return LoginResponse.fromJson(json);
   }
+
+
+//Registra un nuovo utente tramite. Converte la risposta JSON in RegisterResponse.
+  Future<RegisterResponse> register(RegisterRequest request) async {
+
+    //comunicazione con SpringBoot
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/user/register',
+      data: request.toJson(),
+    );
+
+    final json = response.data;
+
+    if (json == null) {
+      throw const FormatException(
+        'Risposta di registrazione vuota.',
+      );
+    }
+
+    return RegisterResponse.fromJson(json);
+  }
+
 
   /*
    * Rinnova la sessione.

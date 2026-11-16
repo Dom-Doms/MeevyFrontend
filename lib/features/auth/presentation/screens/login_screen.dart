@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../../../app/session/session_view_model.dart';
 import '../view_models/login_view_model.dart';
+import '../../data/repositories/auth_repository.dart';
+import '../view_models/register_view_model.dart';
+import 'register_screen.dart';
 
 /*
  * Schermata di accesso a Meevy.
@@ -41,6 +44,34 @@ class _LoginScreenState extends State<LoginScreen> {
       context.read<SessionViewModel>().onLoginSucceeded();
     }
   }
+
+
+// Apre la registrazione e mostra una conferma quando termina.
+  Future<void> _openRegister() async {
+    final authRepository = context.read<AuthRepository>();
+
+    final registered = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => RegisterViewModel(authRepository),
+          child: const RegisterScreen(),
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (registered == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Account creato con successo! Ora puoi accedere.',
+          ),
+        ),
+      );
+    }
+  }
+
 
   @override
   void dispose() {
@@ -140,7 +171,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           )
                               : const Text('Accedi'),
                         ),
+
                         const SizedBox(height: 12),
+
+                        // Permette agli utenti senza account di registrarsi.
+                        TextButton(
+                          onPressed: login.isLoading ? null : _openRegister,
+                          child: const Text(
+                            'Non hai un account? Registrati',
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
 
                         TextButton(
                           onPressed: login.isLoading
@@ -150,6 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                           child: const Text('Continua come ospite'),
                         ),
+
                       ],
                     ),
                   );

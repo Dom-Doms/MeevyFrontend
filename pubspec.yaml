@@ -23,6 +23,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    - assets/branding/meevy_icon.png
+
 
 flutter_launcher_icons:
   android: true
