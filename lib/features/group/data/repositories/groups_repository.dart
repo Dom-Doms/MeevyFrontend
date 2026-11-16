@@ -6,6 +6,11 @@ import '../models/study_group.dart';
 import '../models/group_member.dart';
 
 
+import '../models/group_invitation.dart';
+import '../models/group_role.dart';
+
+
+
 /*
  * Gestisce l'accesso alle API dei gruppi.
  * Utilizza il client Dio autenticato dell'applicazione.
@@ -118,5 +123,93 @@ class GroupsRepository {
     )
         .toList();
   }
+
+// Genera un invito utilizzabile una sola volta.
+  Future<GroupInvitation> createInvitation(
+      int groupId,
+      ) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/groups/$groupId/invitations',
+    );
+
+    final data = response.data;
+
+    if (data == null) {
+      throw const FormatException(
+        'Risposta dell’invito non valida.',
+      );
+    }
+
+    return GroupInvitation.fromJson(data);
+  }
+
+// Accetta un invito e restituisce il gruppo.
+  Future<StudyGroup> acceptInvitation(
+      String token,
+      ) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/group-invitations/accept',
+      data: {
+        'token': token,
+      },
+    );
+
+    return _parseGroup(response.data);
+  }
+
+// Nomina o revoca un moderatore.
+  Future<GroupMember> updateMemberRole({
+    required int groupId,
+    required int userId,
+    required GroupRole role,
+  }) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/groups/$groupId/members/$userId/role',
+      data: {
+        'role': role.name.toUpperCase(),
+      },
+    );
+
+    final data = response.data;
+
+    if (data == null) {
+      throw const FormatException(
+        'Risposta del membro non valida.',
+      );
+    }
+
+    return GroupMember.fromJson(data);
+  }
+
+// Espelle un partecipante dal gruppo.
+  Future<void> removeMember({
+    required int groupId,
+    required int userId,
+  }) async {
+    await _dio.delete<void>(
+      '/groups/$groupId/members/$userId',
+    );
+  }
+
+// Trasferisce la proprietà del gruppo.
+  Future<void> transferOwnership({
+    required int groupId,
+    required int newOwnerUserId,
+  }) async {
+    await _dio.patch<void>(
+      '/groups/$groupId/owner',
+      data: {
+        'newOwnerUserId': newOwnerUserId,
+      },
+    );
+  }
+
+// Abbandona il gruppo come utente corrente.
+  Future<void> leaveGroup(int groupId) async {
+    await _dio.post<void>(
+      '/groups/$groupId/leave',
+    );
+  }
+
 
 }

@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
 
-import '../../data/models/group_role.dart';
+
 import '../../data/models/study_group.dart';
 
 
@@ -13,6 +13,9 @@ import '../view_models/group_members_view_model.dart';
 import '../widgets/group_dashboard.dart';
 import '../widgets/group_members_view.dart';
 import '../widgets/group_settings.dart';
+
+import '../view_models/groups_view_model.dart';
+
 
 // Schermate disponibili all'interno del gruppo.
 enum GroupWorkspacePage {
@@ -36,6 +39,7 @@ class GroupWorkspaceScreen extends StatelessWidget {
   final VoidCallback onBack;
   final ValueChanged<GroupWorkspacePage> onOpenPage;
   final VoidCallback? onEdit;
+  final VoidCallback? onLeave;
 
   const GroupWorkspaceScreen({
     super.key,
@@ -44,6 +48,7 @@ class GroupWorkspaceScreen extends StatelessWidget {
     required this.onBack,
     required this.onOpenPage,
     required this.onEdit,
+    required this.onLeave,
   });
 
 
@@ -183,6 +188,8 @@ class GroupWorkspaceScreen extends StatelessWidget {
       case GroupWorkspacePage.dashboard:
         return Text(group.name);
 
+
+
       case GroupWorkspacePage.members:
         return const Text('Membri');
 
@@ -212,18 +219,23 @@ class GroupWorkspaceScreen extends StatelessWidget {
 
       case GroupWorkspacePage.members:
         return ChangeNotifierProvider(
+          key: ValueKey(group.id),
           create: (context) => GroupMembersViewModel(
             GroupsRepository(context.read<Dio>()),
-            group.id,
+            group,
+            context.read<GroupsViewModel>().syncGroup,
           )..load(),
           child: const GroupMembersView(),
         );
+
 
       case GroupWorkspacePage.settings:
         return GroupSettings(
           group: group,
           onEdit: onEdit,
+          onLeave: onLeave,
         );
+
     }
   }
 

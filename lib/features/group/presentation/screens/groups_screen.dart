@@ -2,6 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+
+import '../widgets/join_group_dialog.dart';
+
 import '../../data/models/study_group.dart';
 import '../view_models/groups_view_model.dart';
 import '../widgets/group_form_dialog.dart';
@@ -136,6 +139,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
               : () => _showGroupForm(
             group: selectedGroup,
           ),
+
+          onLeave: viewModel.isSaving || viewModel.isLoading
+              ? null
+              : () => _leaveGroup(selectedGroup
+          ),
+
         ),
       );
     }
@@ -145,6 +154,18 @@ class _GroupsScreenState extends State<GroupsScreen> {
       appBar: AppBar(
         title: const Text('I miei gruppi'),
         actions: [
+
+          IconButton(
+            tooltip: 'Unisciti a un gruppo',
+            onPressed: viewModel.isLoading ||
+                viewModel.isSaving
+                ? null
+                : _joinGroup,
+            icon: const Icon(
+              Icons.group_add_outlined,
+            ),
+          ),
+
           IconButton(
             tooltip: 'Aggiorna',
             onPressed: viewModel.isLoading ||
@@ -245,4 +266,110 @@ class _GroupsScreenState extends State<GroupsScreen> {
       ),
     );
   }
+
+// Accetta il codice e apre il gruppo appena raggiunto.
+  Future<void> _joinGroup() async {
+    final token = await showDialog<String>(
+      context: context,
+      builder: (_) => const JoinGroupDialog(),
+    );
+
+    if (token == null || !mounted) return;
+
+    final viewModel = context.read<GroupsViewModel>();
+
+    final group = await viewModel.acceptInvitation(
+      token,
+    );
+
+    if (!mounted) return;
+
+    if (group == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            viewModel.saveError ??
+                'Impossibile unirsi al gruppo.',
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    _openGroup(group);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Ti sei unito a ${group.name}!',
+        ),
+      ),
+    );
+  }
+
+
+// Chiede conferma prima di abbandonare il gruppo.
+  Future<void> _leaveGroup(StudyGroup group) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Abbandona gruppo'),
+        content: Text(
+          'Vuoi abbandonare il gruppo ${group.name}? '
+              'Per rientrare avrai bisogno di un nuovo invito.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop(false);
+            },
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop(true);
+            },
+            child: const Text('Abbandona'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final viewModel = context.read<GroupsViewModel>();
+
+    final success = await viewModel.leaveGroup(
+      group.id,
+    );
+
+    if (!mounted) return;
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            viewModel.saveError ??
+                'Impossibile abbandonare il gruppo.',
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    // Torna all'elenco dei gruppi.
+    setState(() {
+      _selectedGroupId = null;
+      _page = GroupWorkspacePage.chat;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Hai abbandonato il gruppo.'),
+      ),
+    );
+  }
+
 }

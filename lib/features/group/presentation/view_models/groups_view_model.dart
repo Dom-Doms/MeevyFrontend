@@ -2,6 +2,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+
+import 'group_error_message.dart';
+
+
 import '../../data/models/study_group.dart';
 import '../../data/repositories/groups_repository.dart';
 
@@ -108,15 +112,7 @@ class GroupsViewModel extends ChangeNotifier {
       if (_disposed) return null;
 
       // Inserisce il nuovo gruppo o aggiorna quello esistente.
-      final index = _groups.indexWhere(
-            (group) => group.id == result.id,
-      );
-
-      if (index == -1) {
-        _groups.add(result);
-      } else {
-        _groups[index] = result;
-      }
+      _upsertGroup(result);
 
       return result;
     } on DioException catch (error) {
@@ -144,6 +140,113 @@ class GroupsViewModel extends ChangeNotifier {
       }
     }
   }
+
+
+// Accetta un invito e aggiunge il gruppo all'elenco.
+  Future<StudyGroup?> acceptInvitation(
+      String token,
+      ) {
+    return _performGroupAction<StudyGroup>(
+      request: () => _repository.acceptInvitation(token),
+      onSuccess: _upsertGroup,
+      fallback: 'Impossibile accettare l’invito.',
+    );
+  }
+
+// Abbandona il gruppo e lo rimuove dall'elenco.
+  Future<bool> leaveGroup(int groupId) async {
+    final result = await _performGroupAction<bool>(
+      request: () async {
+        await _repository.leaveGroup(groupId);
+        return true;
+      },
+      onSuccess: (_) {
+        _groups.removeWhere(
+              (group) => group.id == groupId,
+        );
+      },
+      fallback: 'Impossibile abbandonare il gruppo.',
+    );
+
+    return result == true;
+  }
+
+/*
+ * Esegue un'operazione sui gruppi gestendo
+ * salvataggio, errori e aggiornamento dell'interfaccia.
+ */
+  Future<T?> _performGroupAction<T>({
+    required Future<T> Function() request,
+    required void Function(T) onSuccess,
+    required String fallback,
+  }) async {
+    if (_isSaving || _isLoading || _disposed) {
+      return null;
+    }
+
+    _isSaving = true;
+    _saveError = null;
+    notifyListeners();
+
+    try {
+      final result = await request();
+
+      if (_disposed) return null;
+
+      onSuccess(result);
+
+      return result;
+    } catch (error) {
+      if (!_disposed) {
+        _saveError = groupErrorMessage(
+          error,
+          fallback: fallback,
+        );
+      }
+
+      return null;
+    } finally {
+      if (!_disposed) {
+        _isSaving = false;
+        notifyListeners();
+      }
+    }
+  }
+
+
+
+// Inserisce o aggiorna un gruppo nell'elenco locale.
+  void _upsertGroup(StudyGroup group) {
+    final index = _groups.indexWhere(
+          (item) => item.id == group.id,
+    );
+
+    if (index == -1) {
+      _groups.add(group);
+    } else {
+      _groups[index] = group;
+    }
+  }
+
+/*
+ * Aggiorna un gruppo già presente nell'elenco
+ * usando le informazioni ottenute dal ViewModel dei membri.
+ */
+  void syncGroup(StudyGroup group) {
+    if (_disposed) return;
+
+    final index = _groups.indexWhere(
+          (item) => item.id == group.id,
+    );
+
+    // Non reinserisce gruppi eventualmente abbandonati.
+    if (index == -1) return;
+
+    _groups[index] = group;
+
+    notifyListeners();
+  }
+
 
   @override
   void dispose() {

@@ -11,11 +11,13 @@ import '../../data/models/study_group.dart';
 class GroupSettings extends StatelessWidget {
   final StudyGroup group;
   final VoidCallback? onEdit;
+  final VoidCallback? onLeave;
 
   const GroupSettings({
     super.key,
     required this.group,
     required this.onEdit,
+    required this.onLeave,
   });
 
   @override
@@ -88,6 +90,38 @@ class GroupSettings extends StatelessWidget {
             label: const Text('Modifica gruppo'),
           ),
         ],
+
+
+// Il proprietario deve trasferire la proprietà prima di uscire.
+        if (!isOwner) ...[
+          const SizedBox(height: 24),
+
+          Text(
+            'Partecipazione',
+            style: theme.textTheme.titleLarge,
+          ),
+
+          const SizedBox(height: 16),
+
+          OutlinedButton.icon(
+            onPressed: onLeave,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: theme.colorScheme.error,
+            ),
+            icon: const Icon(Icons.exit_to_app),
+            label: const Text('Abbandona gruppo'),
+          ),
+        ] else ...[
+          const SizedBox(height: 16),
+
+          Text(
+            'Per abbandonare il gruppo devi prima '
+                'trasferire la proprietà a un altro partecipante.',
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+
+
       ],
     );
   }
