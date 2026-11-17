@@ -10,6 +10,8 @@ import '../view_models/groups_view_model.dart';
 import '../widgets/group_form_dialog.dart';
 import 'group_workspace_screen.dart';
 
+import '../../../../app/widgets/meevy_page_header.dart';
+
 /*
  * Visualizza i gruppi dell'utente e gestisce
  * l'apertura della chat e della dashboard.
@@ -151,31 +153,43 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('I miei gruppi'),
-        actions: [
 
-          IconButton(
-            tooltip: 'Unisciti a un gruppo',
-            onPressed: viewModel.isLoading ||
-                viewModel.isSaving
-                ? null
-                : _joinGroup,
-            icon: const Icon(
-              Icons.group_add_outlined,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: MeevyPageHeader(
+                title: 'I miei gruppi',
+                actions: [
+                  IconButton(
+                    tooltip: 'Unisciti a un gruppo',
+                    onPressed:
+                    viewModel.isLoading || viewModel.isSaving
+                        ? null
+                        : _joinGroup,
+                    icon: const Icon(Icons.group_add_outlined),
+                  ),
+                  IconButton(
+                    tooltip: 'Aggiorna',
+                    onPressed:
+                    viewModel.isLoading || viewModel.isSaving
+                        ? null
+                        : viewModel.load,
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          IconButton(
-            tooltip: 'Aggiorna',
-            onPressed: viewModel.isLoading ||
-                viewModel.isSaving
-                ? null
-                : viewModel.load,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
+            Expanded(
+              child: _buildGroupList(viewModel),
+            ),
+          ],
+        ),
       ),
+
 
       floatingActionButton: FloatingActionButton.extended(
         onPressed: viewModel.isSaving ||
@@ -185,8 +199,6 @@ class _GroupsScreenState extends State<GroupsScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Crea gruppo'),
       ),
-
-      body: _buildGroupList(viewModel),
     );
   }
 

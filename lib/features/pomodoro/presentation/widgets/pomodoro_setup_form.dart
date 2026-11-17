@@ -126,41 +126,59 @@ class _PomodoroSetupFormState extends State<PomodoroSetupForm> {
             ],
           ),
 
-          const SizedBox(height: 12),
 
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                onPressed: enabled && index > 0
-                    ? () => onChanged(options[index - 1])
-                    : null,
-                icon: const Icon(Icons.remove),
-                iconSize: 19,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-              ),
-
-              Text(
-                formatValue?.call(value) ?? '$value min',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
+              // Il pulsante sinistro occupa sempre 36 pixel.
+              SizedBox(
+                width: 36,
+                height: 40,
+                child: IconButton(
+                  onPressed: enabled && index > 0
+                      ? () => onChanged(options[index - 1])
+                      : null,
+                  icon: const Icon(Icons.remove),
+                  iconSize: 18,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ),
 
-              IconButton(
-                onPressed: enabled && index >= 0 && index < options.length - 1
-                    ? () => onChanged(options[index + 1])
-                    : null,
-                icon: const Icon(Icons.add),
-                iconSize: 19,
-                color: const Color(0xFF4D8B67),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+              // Il valore è sempre centrato rispetto alla card.
+              Expanded(
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      formatValue?.call(value) ?? '$value min',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Il pulsante destro occupa esattamente lo stesso spazio.
+              SizedBox(
+                width: 36,
+                height: 40,
+                child: IconButton(
+                  onPressed:
+                  enabled && index >= 0 && index < options.length - 1
+                      ? () => onChanged(options[index + 1])
+                      : null,
+                  icon: const Icon(Icons.add),
+                  iconSize: 18,
+                  color: const Color(0xFF4D8B67),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
               ),
             ],
           ),
+
         ],
       ),
     );
@@ -288,53 +306,80 @@ class _PomodoroSetupFormState extends State<PomodoroSetupForm> {
             const SizedBox(height: 16),
 
             // Materia associata alla sessione.
+
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE8E3EF)),
+                border: Border.all(
+                  color: const Color(0xFFE8E3EF),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.school_outlined, color: Color(0xFF4D8B67)),
+                  const Icon(
+                    Icons.school_outlined,
+                    size: 23,
+                    color: Color(0xFF4D8B67),
+                  ),
 
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
 
                   Expanded(
-                    child: DropdownButtonFormField<int>(
-                      initialValue: _selectedSubjectId,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Materia associata',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      hint: const Text(
-                        'Seleziona una materia',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      items: subjects.map((subject) {
-                        return DropdownMenuItem<int>(
-                          value: subject.id,
-                          child: Text(
-                            subject.name,
-                            overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Materia associata',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF6C6672),
                           ),
-                        );
-                      }).toList(),
-                      onChanged: isBusy
-                          ? null
-                          : (value) {
+                        ),
+
+                        const SizedBox(height: 4),
+
+                        // Evita il doppio bordo creato dal tema globale.
+                        DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _selectedSubjectId,
+                            isExpanded: true,
+                            isDense: true,
+                            borderRadius: BorderRadius.circular(16),
+                            dropdownColor: Colors.white,
+                            hint: const Text(
+                              'Seleziona una materia',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            items: subjects.map((subject) {
+                              return DropdownMenuItem<int>(
+                                value: subject.id,
+                                child: Text(
+                                  subject.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: isBusy
+                                ? null
+                                : (value) {
                               setState(() {
                                 _selectedSubjectId = value;
                               });
                             },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
+
 
             const SizedBox(height: 16),
 

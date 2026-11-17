@@ -9,6 +9,8 @@ import 'subject_detail_screen.dart';
 
 import '../view_models/subjects_view_model.dart';
 
+import '../../../../app/widgets/meevy_page_header.dart';
+
 
 /*
  * Visualizza le materie personali dell'utente.
@@ -274,20 +276,16 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
 
   // Intestazione con ricerca e ordinamento delle materie.
   Widget _buildHeader(BuildContext context) {
-    final theme = Theme.of(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        16, 12, 16, 16,
+        20, 12, 20, 16,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Le tue materie',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          const MeevyPageHeader(
+          title: 'Le tue materie',
           ),
 
 

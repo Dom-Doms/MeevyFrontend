@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../app/session/session_view_model.dart';
 import '../../data/models/user_profile.dart';
 import '../view_models/profile_view_model.dart';
+import '../../../../app/widgets/meevy_page_header.dart';
 
 //Schermata del profilo personale.
 
@@ -49,7 +50,7 @@ class ProfileScreen extends StatelessWidget {
       ) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -99,16 +100,10 @@ class ProfileScreen extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(20),
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Il mio profilo',
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineMedium,
-                ),
-              ),
+
+          MeevyPageHeader(
+            title: 'Il mio profilo',
+            actions: [
               IconButton(
                 tooltip: 'Aggiorna profilo',
                 onPressed: viewModel.isLoading
@@ -119,12 +114,7 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 6),
 
-          Text(
-            'Gestisci le informazioni del tuo account.',
-            style: TextStyle(color: colors.onSurfaceVariant),
-          ),
 
           const SizedBox(height: 24),
 

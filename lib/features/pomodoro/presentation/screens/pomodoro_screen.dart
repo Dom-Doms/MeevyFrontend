@@ -6,6 +6,8 @@ import '../view_models/pomodoro_view_model.dart';
 import '../widgets/pomodoro_setup_form.dart';
 import '../widgets/pomodoro_timer_ring.dart';
 
+import '../../../../app/widgets/meevy_page_header.dart';
+
 /*
  * Schermata del Pomodoro personale autenticato.
  *
@@ -22,13 +24,12 @@ class PomodoroScreen extends StatelessWidget {
         child: Consumer<PomodoroViewModel>(
           builder: (context, pomodoro, _) {
             return Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Pomodoro personale',
-                    style: Theme.of(context).textTheme.headlineSmall,
+                  const MeevyPageHeader(
+                    title: 'Pomodoro personale',
                   ),
 
 
