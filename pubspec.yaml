@@ -13,6 +13,7 @@ dependencies:
   provider: ^6.1.5+1
   flutter_secure_storage: ^10.3.4
   file_picker: ^11.0.3
+  stomp_dart_client: 3.0.1
 
 dev_dependencies:
   flutter_test:

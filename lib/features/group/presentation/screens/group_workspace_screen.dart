@@ -17,6 +17,20 @@ import '../widgets/group_settings.dart';
 import '../view_models/groups_view_model.dart';
 
 
+//chat reale
+
+import '../../../../app/config/app_config.dart';
+
+import '../../../auth/data/repositories/auth_repository.dart';
+import '../../../profile/data/repositories/profile_repository.dart';
+
+import '../../../chat/data/repositories/group_chat_repository.dart';
+import '../../../chat/data/service/group_chat_socket_service.dart';
+import '../../../chat/presentation/view_models/group_chat_view_model.dart';
+import '../../../chat/presentation/widgets/group_chat_view.dart';
+
+
+
 // Schermate disponibili all'interno del gruppo.
 enum GroupWorkspacePage {
   chat,
@@ -98,9 +112,7 @@ class GroupWorkspaceScreen extends StatelessWidget {
 
   /*
    * Struttura della chat.
-   * L'invio sarà abilitato quando saranno
-   * disponibili le API dei messaggi.
-   */
+
   Widget _buildChat(BuildContext context) {
     return Column(
       children: [
@@ -152,8 +164,7 @@ class GroupWorkspaceScreen extends StatelessWidget {
       ],
     );
   }
-
-
+   */
 
 
 // Costruisce il titolo in base alla schermata aperta.
@@ -201,10 +212,26 @@ class GroupWorkspaceScreen extends StatelessWidget {
 // Seleziona il contenuto della schermata.
   Widget _buildPage() {
     switch (page) {
+
       case GroupWorkspacePage.chat:
-        return Builder(
-          builder: _buildChat,
+        return ChangeNotifierProvider(
+          key: ValueKey('chat_${group.id}'),
+          create: (context) => GroupChatViewModel(
+            GroupChatRepository(
+              context.read<Dio>(),
+            ),
+            GroupChatSocketService(
+              authRepository: context.read<AuthRepository>(),
+              apiBaseUrl: AppConfig.apiBaseUrl,
+            ),
+            ProfileRepository(
+              context.read<Dio>(),
+            ),
+            group.id,
+          )..initialize(),
+          child: const GroupChatView(),
         );
+
 
       case GroupWorkspacePage.dashboard:
         return GroupDashboard(
