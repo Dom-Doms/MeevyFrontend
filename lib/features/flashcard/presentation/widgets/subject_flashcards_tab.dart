@@ -5,12 +5,23 @@ import 'package:provider/provider.dart';
 import '../../data/models/personal_flashcard.dart';
 import '../view_models/subject_flashcards_view_model.dart';
 
+
+import '../screens/flashcard_detail_screen.dart';
+
+
 /*
  * Visualizza le flashcard come domande espandibili.
  * L'utente può creare, modificare, duplicare ed eliminare.
  */
 class SubjectFlashcardsTab extends StatelessWidget {
-  const SubjectFlashcardsTab({super.key});
+
+  final String subjectName;
+
+  const SubjectFlashcardsTab({
+    super.key,
+    required this.subjectName,
+  });
+
 
   Future<void> _showForm(
       BuildContext context,
@@ -150,6 +161,50 @@ class SubjectFlashcardsTab extends StatelessWidget {
     );
   }
 
+
+/*
+ * Apre il dettaglio della flashcard selezionata.
+ *
+ * Riutilizza lo stesso ViewModel della tab: le modifiche
+ * saranno immediatamente visibili anche nell'elenco.
+ */
+  Future<void> _openDetail(
+      BuildContext context,
+      SubjectFlashcardsViewModel viewModel,
+      PersonalFlashcard card,
+      ) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (pageContext) {
+          return ChangeNotifierProvider<
+              SubjectFlashcardsViewModel>.value(
+            value: viewModel,
+            child: FlashcardDetailScreen(
+              flashcardId: card.id,
+              subjectName: subjectName,
+
+              // Riutilizziamo il dialog di modifica esistente.
+              onEdit: (current) => _showForm(
+                pageContext,
+                viewModel,
+                current,
+              ),
+
+              // Riutilizziamo la conferma di eliminazione.
+              onDelete: (current) => _delete(
+                pageContext,
+                viewModel,
+                current,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<SubjectFlashcardsViewModel>();
@@ -185,61 +240,34 @@ class SubjectFlashcardsTab extends StatelessWidget {
               itemBuilder: (context, index) {
                 final card = viewModel.cards[index];
 
-                return Card(
-                  child: ExpansionTile(
-                    key: ValueKey(card.id),
-                    title: Row(
-                      children: [
-                        Expanded(
-                          child: Text(card.question),
-                        ),
-                        PopupMenuButton<String>(
-                          enabled: !viewModel.isSaving,
-                          tooltip: 'Gestisci flashcard',
-                          onSelected: (action) async {
-                            if (action == 'edit') {
-                              await _showForm(context, viewModel, card);
-                            } else if (action == 'duplicate') {
-                              final success =
-                              await viewModel.duplicate(card);
 
-                              if (!success && context.mounted) {
-                                _showError(context, viewModel);
-                              }
-                            } else {
-                              await _delete(context, viewModel, card);
-                            }
-                          },
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(
-                              value: 'edit',
-                              child: Text('Modifica'),
-                            ),
-                            PopupMenuItem(
-                              value: 'duplicate',
-                              child: Text('Duplica'),
-                            ),
-                            PopupMenuItem(
-                              value: 'delete',
-                              child: Text('Elimina'),
-                            ),
-                          ],
-                        ),
-                      ],
+                return Card(
+                  elevation: 0,
+                  margin: const EdgeInsets.only(bottom: 4),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
                     ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          16, 8, 16, 20,
-                        ),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(card.answer),
-                        ),
-                      ),
-                    ],
+                    leading: const Icon(Icons.style_outlined),
+                    title: Text(
+                      card.question,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text('Visualizza la flashcard'),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _openDetail(
+                      context,
+                      viewModel,
+                      card,
+                    ),
                   ),
                 );
+
               },
             ),
           ),

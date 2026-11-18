@@ -34,6 +34,10 @@ class SubjectsScreen extends StatefulWidget {
 class _SubjectsScreenState extends State<SubjectsScreen> {
   final _searchController = TextEditingController();
 
+// Gestisce le sottoschermate della sezione Materie.
+  final _subjectNavigatorKey = GlobalKey<NavigatorState>();
+
+
   int? _selectedSubjectId;
   bool _ascending = true;
 
@@ -215,33 +219,48 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
      * Mostra il dettaglio all'interno della MainShell,
      * mantenendo visibile la barra di navigazione.
      */
+
     if (selectedSubject != null) {
       return PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, result) {
-          if (!didPop) {
-            setState(() => _selectedSubjectId = null);
+          if (didPop) return;
+
+          final navigator = _subjectNavigatorKey.currentState;
+
+          // Prima chiude un eventuale dettaglio flashcard.
+          if (navigator != null && navigator.canPop()) {
+            navigator.pop();
+            return;
           }
+
+          // Altrimenti torna all'elenco delle materie.
+          _closeSubjectDetail(viewModel);
         },
-        child: SubjectDetailScreen(
-          key: ValueKey(selectedSubject.id),
-          subject: selectedSubject,
-          onBack: () {
-            setState(() => _selectedSubjectId = null);
+        child: Navigator(
+          key: _subjectNavigatorKey,
+          onGenerateRoute: (settings) {
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => SubjectDetailScreen(
+                key: ValueKey(selectedSubject.id),
+                subject: selectedSubject,
+                onBack: () => _closeSubjectDetail(viewModel),
+                onRename: viewModel.isSaving
+                    ? null
+                    : () => _showSubjectForm(
+                  subject: selectedSubject,
+                ),
+                onDelete: viewModel.isSaving
+                    ? null
+                    : () => _deleteSubject(selectedSubject),
+              ),
+            );
           },
-          onRename: viewModel.isSaving
-              ? null
-              : () => _showSubjectForm(
-            subject: selectedSubject,
-          ),
-
-          onDelete: viewModel.isSaving
-              ? null
-              : () => _deleteSubject(selectedSubject),
-
         ),
       );
     }
+
 
     return Scaffold(
 

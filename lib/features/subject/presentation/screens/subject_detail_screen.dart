@@ -218,15 +218,19 @@ class SubjectDetailScreen extends StatelessWidget {
                * alla volta, in base alla tab selezionata.
                */
 
-              const Expanded(
+
+              Expanded(
                 child: TabBarView(
                   children: [
-                    SubjectNotesTab(),
-                    SubjectChecklistTab(),
-                    SubjectFlashcardsTab(),
+                    const SubjectNotesTab(),
+                    const SubjectChecklistTab(),
+                    SubjectFlashcardsTab(
+                      subjectName: subject.name,
+                    ),
                   ],
                 ),
               ),
+
 
             ],
           ),
