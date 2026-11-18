@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 
 import '../../data/models/subject.dart';
 
+import '../../data/models/subject_progress.dart';
+
+
 // Azioni disponibili nel menu di una materia.
 enum SubjectAction { rename, delete }
 
@@ -14,6 +17,9 @@ enum SubjectAction { rename, delete }
 class SubjectIcon extends StatelessWidget {
   final Subject subject;
   final double size;
+
+
+
 
   const SubjectIcon({
     super.key,
@@ -60,6 +66,7 @@ class SubjectCard extends StatelessWidget {
   //final VoidCallback onRename;
   //final VoidCallback onDelete;
   final bool isSaving;
+  final SubjectProgress? progress;
 
 
   const SubjectCard({
@@ -67,12 +74,16 @@ class SubjectCard extends StatelessWidget {
     required this.subject,
     required this.onOpen,
     this.isSaving = false,
+    this.progress,
   });
 
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final fraction = progress?.fraction;
+    final percentage = progress?.percentage;
+
 
     return Material(
       color: theme.colorScheme.surface,
@@ -103,6 +114,39 @@ class SubjectCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              //rotellina di completamento
+
+              const Spacer(),
+
+// La barra compare soltanto quando esistono attività.
+              if (fraction != null && percentage != null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: LinearProgressIndicator(
+                        value: fraction,
+                        minHeight: 7,
+                        borderRadius: BorderRadius.circular(8),
+                        backgroundColor:
+                        theme.colorScheme.surfaceContainerHighest,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '$percentage%',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                )
+              else
+                Text(
+                  'Nessuna attività',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+
+
             ],
           ),
         ),

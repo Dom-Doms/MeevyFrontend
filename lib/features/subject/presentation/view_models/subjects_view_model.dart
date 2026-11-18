@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart';
 import '../../data/models/subject.dart';
 import '../../data/repositories/subjects_repository.dart';
 
+import '../../data/models/subject_progress.dart';
+
+
 /*
  * Gestisce caricamento, dati ed errori
  * della schermata delle materie personali.
@@ -25,6 +28,14 @@ class SubjectsViewModel extends ChangeNotifier {
 
   SubjectsViewModel(this._repository);
 
+  Map<int, SubjectProgress> _progressBySubject = {};
+
+// Recupera il progresso di una specifica materia.
+  SubjectProgress? progressFor(int subjectId) {
+    return _progressBySubject[subjectId];
+  }
+
+
   List<Subject> get subjects => List.unmodifiable(_subjects);
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -38,7 +49,30 @@ class SubjectsViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+
       final result = await _repository.getAll();
+
+// Il caricamento delle materie non deve dipendere
+// dalla disponibilità della nuova API dei progressi.
+      Map<int, SubjectProgress> progress = {};
+
+      try {
+        final response = await _repository.getProgress();
+
+        progress = {
+          for (final item in response)
+            item.subjectId: item,
+        };
+      } catch (_) {
+        // Se la nuova API non è ancora distribuita,
+        // le materie rimangono utilizzabili.
+      }
+
+      if (_disposed) return;
+
+      _subjects = result;
+      _progressBySubject = progress;
+
 
       if (_disposed) return;
       _subjects = result;

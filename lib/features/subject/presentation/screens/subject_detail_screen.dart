@@ -125,6 +125,63 @@ class SubjectDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+
+
+                    const SizedBox(width: 12),
+
+                    // Il cerchio si aggiorna quando cambia la checklist.
+                    Consumer<ChecklistViewModel>(
+                      builder: (context, checklist, _) {
+                        final total = checklist.items.length;
+
+                        final completed = checklist.items
+                            .where((item) => item.completed)
+                            .length;
+
+                        final hasProgress =
+                            checklist.hasChecklist &&
+                                !checklist.isLoading &&
+                                checklist.errorMessage == null &&
+                                total > 0;
+
+                        final double? fraction = hasProgress
+                            ? completed / total
+                            : null;
+
+                        final label = fraction == null
+                            ? '—'
+                            : '${(fraction * 100).round()}%';
+
+                        final colors = Theme.of(context).colorScheme;
+
+                        return SizedBox(
+                          width: 60,
+                          height: 60,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              SizedBox.expand(
+                                child: CircularProgressIndicator(
+                                  value: fraction ?? 0,
+                                  strokeWidth: 6,
+                                  strokeCap: StrokeCap.round,
+                                  backgroundColor:
+                                  colors.surfaceContainerHighest,
+                                ),
+                              ),
+                              Text(
+                                label,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelLarge,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+
+
                   ],
                 ),
               ),

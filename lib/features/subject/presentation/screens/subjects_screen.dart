@@ -409,7 +409,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
         gridDelegate:
         const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 240,
-          mainAxisExtent: 140,
+          mainAxisExtent: 190,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
@@ -418,9 +418,12 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
           final subject = subjects[index];
 
 
+
+
           return SubjectCard(
             key: ValueKey(subject.id),
             subject: subject,
+            progress: viewModel.progressFor(subject.id),
             isSaving: viewModel.isSaving || viewModel.isLoading,
             onOpen: () {
               setState(() {
@@ -433,4 +436,14 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
       ),
     );
   }
+
+// Chiude il dettaglio e aggiorna i progressi dal server.
+  void _closeSubjectDetail(SubjectsViewModel viewModel) {
+    setState(() {
+      _selectedSubjectId = null;
+    });
+
+    viewModel.load();
+  }
+
 }

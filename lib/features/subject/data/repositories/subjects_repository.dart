@@ -3,6 +3,10 @@ import 'package:dio/dio.dart';
 
 import '../models/subject.dart';
 
+import '../models/subject_progress.dart';
+
+
+
 /*
  * Recupera le materie dal backend.
  * Utilizza il client Dio autenticato dell'applicazione.
@@ -62,5 +66,28 @@ class SubjectsRepository {
 
     return Subject.fromJson(data);
   }
+
+
+// Recupera i progressi aggregati di tutte le materie.
+  Future<List<SubjectProgress>> getProgress() async {
+    final response = await _dio.get<List<dynamic>>(
+      '/subject/progress',
+    );
+
+    final data = response.data;
+
+    if (data == null) {
+      throw const FormatException(
+        'Risposta dei progressi non valida.',
+      );
+    }
+
+    return data.map((item) {
+      return SubjectProgress.fromJson(
+        item as Map<String, dynamic>,
+      );
+    }).toList();
+  }
+
 
 }
