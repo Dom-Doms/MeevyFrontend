@@ -8,6 +8,9 @@ import '../view_models/subject_flashcards_view_model.dart';
 
 import '../screens/flashcard_detail_screen.dart';
 
+import '../screens/flashcard_review_screen.dart';
+
+
 
 /*
  * Visualizza le flashcard come domande espandibili.
@@ -204,6 +207,37 @@ class SubjectFlashcardsTab extends StatelessWidget {
   }
 
 
+/*
+ * Avvia una sessione di ripasso utilizzando
+ * le flashcard già recuperate dal ViewModel.
+ *
+ * Crea una copia dell'elenco per mantenere stabile
+ * la sessione anche se i dati cambiano successivamente.
+ */
+  Future<void> _startReview(
+      BuildContext context,
+      SubjectFlashcardsViewModel viewModel,
+      ) async {
+    if (viewModel.isLoading ||
+        viewModel.isSaving ||
+        viewModel.cards.isEmpty) {
+      return;
+    }
+
+    final cards = List<PersonalFlashcard>.of(
+      viewModel.cards,
+    );
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => FlashcardReviewScreen(
+          subjectName: subjectName,
+          cards: cards,
+        ),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -227,7 +261,29 @@ class SubjectFlashcardsTab extends StatelessWidget {
     Column(
     children: [
 
-        if (viewModel.isSaving)
+// Mostra il ripasso solo se ci sono flashcard.
+      if (viewModel.cards.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            16, 12, 16, 4,
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: viewModel.isLoading ||
+                  viewModel.isSaving
+                  ? null
+                  : () => _startReview(
+                context,
+                viewModel,
+              ),
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('Avvia ripasso'),
+            ),
+          ),
+        ),
+
+      if (viewModel.isSaving)
           const LinearProgressIndicator(),
 
         Expanded(

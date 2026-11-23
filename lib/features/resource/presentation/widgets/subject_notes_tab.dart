@@ -8,6 +8,12 @@ import '../view_models/subject_notes_view_model.dart';
 import 'package:file_picker/file_picker.dart';
 
 
+// Azioni disponibili su un documento personale.
+// In futuro aggiungeremo anche la condivisione.
+enum _ResourceAction {
+  delete,
+}
+
 /*
  * Contenuto della tab Appunti.
  * Visualizza soltanto i file della materia selezionata.
@@ -39,6 +45,26 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
 
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
+
+// Ricava il formato da mostrare sotto il nome del file.
+  String _formatFileType(PersonalResource resource) {
+    final filename = resource.originalFilename;
+    final dotIndex = filename.lastIndexOf('.');
+
+    if (dotIndex <= 0 ||
+        dotIndex == filename.length - 1) {
+      return 'FILE';
+    }
+
+    final extension = filename
+        .substring(dotIndex + 1)
+        .toUpperCase();
+
+    return extension.length <= 7
+        ? extension
+        : 'FILE';
+  }
+
 
   // Sceglie l'aspetto dell'icona in base al tipo di file.
   Widget _fileIcon(PersonalResource resource) {
@@ -128,9 +154,11 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
           child: FloatingActionButton(
             heroTag: 'upload_appunti',
             tooltip: 'Carica appunti',
-            onPressed: viewModel.isUploading
+            onPressed: viewModel.isUploading || //Disabilitiamo il caricamento durante un'eliminazione
+                viewModel.isDeleting
                 ? null
                 : () => _pickAndUpload(viewModel),
+
             child: viewModel.isUploading
                 ? const CircularProgressIndicator()
                 : const Icon(Icons.add),
@@ -263,6 +291,74 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
   }
 
 
+/*
+ * Chiede conferma prima di eliminare un documento.
+ * La cancellazione è definitiva e viene eseguita
+ * soltanto dopo la conferma dell'utente.
+ */
+  Future<void> _deleteResource(
+      PersonalResource resource,
+      SubjectNotesViewModel viewModel,
+      ) async {
+    if (viewModel.isDeleting ||
+        viewModel.isUploading ||
+        viewModel.isDownloading ||
+        _activeDownloadId != null) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final colors = Theme.of(dialogContext).colorScheme;
+
+        return AlertDialog(
+          title: const Text('Elimina appunto?'),
+          content: Text(
+            'Vuoi eliminare definitivamente '
+                '"${resource.originalFilename}"?\n\n'
+                'Il documento non potrà essere recuperato.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: const Text('Annulla'),
+            ),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.error,
+                foregroundColor: colors.onError,
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Elimina'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await viewModel.deleteResource(resource);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          viewModel.deleteMessage ??
+              'Operazione non completata.',
+        ),
+      ),
+    );
+  }
+
+
   Widget _buildResourceList(
       SubjectNotesViewModel viewModel,
       List<PersonalResource> resources,
@@ -295,7 +391,9 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
         onRefresh: viewModel.load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(
+            16, 0, 16, 96,
+          ),
           children: [
             const SizedBox(height: 40),
 
@@ -335,9 +433,24 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
             resource.createdAt.toLocal(),
           );
 
+
+          final isBusy = viewModel.isUploading ||
+              viewModel.isDeleting ||
+              viewModel.isDownloading ||
+              viewModel.isLoading ||
+              _activeDownloadId != null;
+
+          final isDeletingThis =
+              viewModel.deletingResourceId == resource.id;
+
+          final isDownloadingThis =
+              _activeDownloadId == resource.id;
+
           return Card(
-            color: Colors.white,
+            key: ValueKey(resource.id),
+            color: Theme.of(context).colorScheme.surface,
             elevation: 0,
+            margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
@@ -347,48 +460,106 @@ class _SubjectNotesTabState extends State<SubjectNotesTab> {
               ),
             ),
             child: ListTile(
-              contentPadding:
-              const EdgeInsets.symmetric(
+              contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
-                vertical: 6,
+                vertical: 8,
               ),
+
               leading: _fileIcon(resource),
+
               title: Text(
                 resource.originalFilename,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                '${_formatSize(resource.sizeBytes)} · $date',
-              ),
-
-// Permette di scaricare il singolo documento.
-              trailing: IconButton(
-                tooltip: 'Scarica ${resource.originalFilename}',
-
-                onPressed: _activeDownloadId != null ||
-                    viewModel.isUploading
-                    ? null
-                    : () => _downloadResource(
-                  resource,
-                  viewModel,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
                 ),
+              ),
 
-                icon: _activeDownloadId == resource.id
-                    ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '${_formatFileType(resource)} · '
+                      '${_formatSize(resource.sizeBytes)} · $date',
+                  maxLines: 2,
+                ),
+              ),
+
+              /*
+     * Download immediato e menu per le altre operazioni.
+     * La condivisione sarà aggiunta qui quando
+     * il backend supporterà i gruppi.
+     */
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Scarica ${resource.originalFilename}',
+                    onPressed: isBusy
+                        ? null
+                        : () => _downloadResource(
+                      resource,
+                      viewModel,
+                    ),
+                    icon: isDownloadingThis
+                        ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    )
+                        : const Icon(Icons.download_outlined),
                   ),
-                )
-                    : const Icon(
-                  Icons.download_outlined,
-                ),
-              ),
 
+                  if (isDeletingThis)
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    )
+                  else
+                    PopupMenuButton<_ResourceAction>(
+                      tooltip: 'Altre azioni',
+                      enabled: !isBusy,
+                      icon: const Icon(Icons.more_vert),
+                      onSelected: (action) {
+                        switch (action) {
+                          case _ResourceAction.delete:
+                            _deleteResource(
+                              resource,
+                              viewModel,
+                            );
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        PopupMenuItem(
+                          value: _ResourceAction.delete,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .error,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text('Elimina'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
             ),
           );
+
         },
       ),
     );

@@ -11,6 +11,22 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 
 
+/*
+ * Distingue tre possibili risultati:
+ *
+ * deleted: il documento non è più presente.
+ * notDeleted: il documento è ancora presente.
+ * unknown: non possiamo verificare l'esito.
+ */
+enum ResourceDeletionStatus {
+  deleted,
+  notDeleted,
+  unknown,
+}
+
+
+
+
 
 /*
  * Gestisce gli appunti appartenenti a una materia.
@@ -36,6 +52,17 @@ class SubjectNotesViewModel extends ChangeNotifier {
   String? get downloadError => _downloadError;
 
 
+// Stato dell'eliminazione di un documento.
+  bool _isDeleting = false;
+  int? _deletingResourceId;
+  String? _deleteMessage;
+
+  bool get isDeleting => _isDeleting;
+  int? get deletingResourceId => _deletingResourceId;
+  String? get deleteMessage => _deleteMessage;
+
+
+  //upload
   bool get isUploading => _isUploading;
   String? get uploadMessage => _uploadMessage;
 
@@ -54,9 +81,11 @@ class SubjectNotesViewModel extends ChangeNotifier {
 
   String? get errorMessage => _errorMessage;
 
-  // Carica gli appunti della materia dal server.
+  // Carica gli appunti della materia dal suploadFileserver.
   Future<void> load() async {
-    if (_isLoading || _disposed) return;
+
+    if (_isLoading || _isDeleting || _disposed) return;
+
 
     _isLoading = true;
     _errorMessage = null;
@@ -91,7 +120,8 @@ class SubjectNotesViewModel extends ChangeNotifier {
  * e aggiorna l'elenco dopo i caricamenti riusciti.
  */
   Future<void> uploadFiles(List<PlatformFile> files) async {
-    if (_isUploading || _isLoading || _disposed) return;
+    if (_isUploading || _isLoading ||
+        _isDeleting|| _disposed) return;
     if (files.isEmpty) return;
 
     const maxFileSize = 20 * 1024 * 1024;
@@ -178,7 +208,7 @@ class SubjectNotesViewModel extends ChangeNotifier {
   Future<Uint8List?> download(
       PersonalResource resource,
       ) async {
-    if (_isDownloading || _disposed) return null;
+    if (_isDownloading || _isDeleting || _disposed) return null;
 
     _isDownloading = true;
     _downloadError = null;
@@ -227,6 +257,118 @@ class SubjectNotesViewModel extends ChangeNotifier {
     }
   }
 
+
+/*
+ * Elimina un documento personale e riconcilia
+ * l'elenco con lo stato effettivo del backend.
+ *
+ * Anche se DELETE restituisce errore, verifichiamo
+ * se il documento è ancora presente: il backend
+ * può aver eliminato il record prima di incontrare
+ * un problema nella cancellazione fisica.
+ */
+  Future<ResourceDeletionStatus> deleteResource(
+      PersonalResource resource,
+      ) async {
+    if (_disposed ||
+        _isLoading ||
+        _isUploading ||
+        _isDownloading ||
+        _isDeleting) {
+      return ResourceDeletionStatus.unknown;
+    }
+
+    _isDeleting = true;
+    _deletingResourceId = resource.id;
+    _deleteMessage = null;
+    notifyListeners();
+
+    bool deleteConfirmed = false;
+
+    try {
+      try {
+        await _repository.delete(resource.id);
+        deleteConfirmed = true;
+      } catch (_) {
+        // Il risultato HTTP non basta a stabilire
+        // se il record sia ancora presente.
+      }
+
+      if (_disposed) {
+        return ResourceDeletionStatus.unknown;
+      }
+
+      try {
+        // Recupera l'elenco autorevole dopo il tentativo.
+        final updated = await _repository.getBySubject(
+          subjectId,
+        );
+
+        if (_disposed) {
+          return ResourceDeletionStatus.unknown;
+        }
+
+        _resources = updated;
+        _errorMessage = null;
+
+        final stillExists = updated.any(
+              (item) => item.id == resource.id,
+        );
+
+        if (!stillExists) {
+          _deleteMessage = 'Appunto eliminato.';
+          return ResourceDeletionStatus.deleted;
+        }
+
+        if (deleteConfirmed) {
+          _deleteMessage =
+          'Il server ha confermato l’eliminazione, '
+              'ma il documento risulta ancora presente. '
+              'Aggiorna l’elenco.';
+          return ResourceDeletionStatus.unknown;
+        }
+
+        _deleteMessage =
+        'Non è stato possibile eliminare il documento.';
+        return ResourceDeletionStatus.notDeleted;
+      } catch (_) {
+        if (_disposed) {
+          return ResourceDeletionStatus.unknown;
+        }
+
+        if (deleteConfirmed) {
+          /*
+         * DELETE è riuscita, ma il refresh è fallito.
+         * Aggiorniamo soltanto l'elemento confermato,
+         * senza fingere di avere l'elenco aggiornato.
+         */
+          _resources = _resources
+              .where((item) => item.id != resource.id)
+              .toList();
+
+          _deleteMessage =
+          'Appunto eliminato. '
+              'Non è stato possibile aggiornare '
+              'l’intero elenco.';
+
+          return ResourceDeletionStatus.deleted;
+        }
+
+        _deleteMessage =
+        'Non è possibile verificare se il documento '
+            'sia stato eliminato. Aggiorna l’elenco '
+            'prima di riprovare.';
+
+        return ResourceDeletionStatus.unknown;
+      }
+    } finally {
+      if (!_disposed) {
+        _isDeleting = false;
+        _deletingResourceId = null;
+        notifyListeners();
+      }
+    }
+  }
 
   @override
   void dispose() {

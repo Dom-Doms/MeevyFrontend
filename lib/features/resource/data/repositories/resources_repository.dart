@@ -74,6 +74,14 @@ class ResourcesRepository {
     return PersonalResource.fromJson(data);
   }
 
+// Elimina un documento personale dal server.
+// Il backend verifica che appartenga all'utente autenticato.
+  Future<void> delete(int resourceId) async {
+    await _dio.delete<void>(
+      '/resources/$resourceId',
+    );
+  }
+
 
 /*
  * Scarica il contenuto di un documento personale.

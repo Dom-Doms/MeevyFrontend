@@ -34,6 +34,7 @@ class SubjectsScreen extends StatefulWidget {
 class _SubjectsScreenState extends State<SubjectsScreen> {
   final _searchController = TextEditingController();
 
+
 // Gestisce le sottoschermate della sezione Materie.
   final _subjectNavigatorKey = GlobalKey<NavigatorState>();
 
