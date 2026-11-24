@@ -21,6 +21,12 @@ class ChecklistViewModel extends ChangeNotifier {
   bool _disposed = false;
   String? _error;
 
+  String? _actionError;
+
+// Gli errori delle operazioni non nascondono l'intera checklist.
+  String? get actionError => _actionError;
+
+
   ChecklistViewModel(this._repository, this.subjectId);
 
   List<ChecklistItem> get items => List.unmodifiable(_items);
@@ -70,21 +76,75 @@ class ChecklistViewModel extends ChangeNotifier {
   }
 
   // Crea la checklist soltanto quando manca.
-  Future<bool> create() => _mutate(() async {
-    if (_checklistId != null) return;
 
-    _checklistId = await _repository.create(subjectId);
-    _items = [];
-  });
+/*
+ * Recupera la checklist già presente o la crea
+ * automaticamente al primo inserimento.
+ *
+ * Se la risposta di creazione viene persa,
+ * prova a recuperare la checklist dal server
+ * anziché inviare immediatamente un'altra POST.
+ */
+  Future<int> _ensureChecklist() async {
+    if (_checklistId != null) {
+      return _checklistId!;
+    }
 
+   int checklistId;
+
+    try {
+      checklistId = await _repository.create(subjectId);
+    } catch (_) {
+      // Verifica se il server ha già creato la checklist.
+      checklistId = await _repository.getBySubject(subjectId);
+
+      // Riconcilia anche eventuali attività già presenti.
+      final existingItems = await _repository.getItems(
+        checklistId,
+      );
+
+      if (!_disposed) {
+        _items = existingItems;
+      }
+    }
+
+    if (!_disposed) {
+      _checklistId = checklistId;
+    }
+
+    return checklistId;
+  }
+
+
+
+/*
+ * Aggiunge un'attività alla materia.
+ * Se necessario, crea automaticamente la checklist.
+ */
   Future<bool> add(String text) => _mutate(() async {
+    final normalizedText = text.trim();
+
+    if (normalizedText.isEmpty) {
+      throw const FormatException(
+        'Il testo dell’attività non può essere vuoto.',
+      );
+    }
+
+    // La prima aggiunta crea anche la checklist.
+    final checklistId = await _ensureChecklist();
+
+    if (_disposed) return;
+
     final item = await _repository.addItem(
-      _checklistId!,
-      text.trim(),
+      checklistId,
+      normalizedText,
     );
+
+    if (_disposed) return;
 
     _items = [..._items, item];
   });
+
 
   Future<bool> rename(ChecklistItem item, String text) =>
       _mutate(() async {
@@ -123,17 +183,21 @@ class ChecklistViewModel extends ChangeNotifier {
   Future<bool> _mutate(Future<void> Function() action) async {
     if (_loading || _saving || _disposed) return false;
 
+
     _saving = true;
-    _error = null;
+    _actionError = null;
     notifyListeners();
+
 
     try {
       await action();
       return !_disposed;
     } catch (_) {
       if (!_disposed) {
-        _error = 'Operazione non completata. '
+        _actionError =
+        'Operazione non confermata. '
             'Aggiorna la checklist prima di riprovare.';
+
       }
 
       return false;

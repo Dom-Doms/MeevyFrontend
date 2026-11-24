@@ -114,20 +114,26 @@ class SubjectChecklistTab extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          viewModel.errorMessage ?? 'Operazione non completata.',
+            viewModel.actionError ?? 'Operazione non completata.'
         ),
       ),
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<ChecklistViewModel>();
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     if (viewModel.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
     }
 
+    // Solo gli errori di caricamento bloccano la schermata.
     if (viewModel.errorMessage != null) {
       return Center(
         child: FilledButton(
@@ -137,150 +143,199 @@ class SubjectChecklistTab extends StatelessWidget {
       );
     }
 
-
-    if (!viewModel.hasChecklist) {
-      return Stack(
-        children: [
-          const Center(
-            child: Text('Nessuna checklist per questa materia.'),
-          ),
-
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton(
-              heroTag: 'create_subject_checklist',
-              tooltip: 'Crea checklist',
-              onPressed: viewModel.isSaving
-                  ? null
-                  : () async {
-                if (!await viewModel.create() &&
-                    context.mounted) {
-                  _showError(context, viewModel);
-                }
-              },
-              child: const Icon(Icons.add),
-            ),
-          ),
-        ],
-      );
-    }
-
-
-    final completed = viewModel.items
-        .where((item) => item.completed)
-        .length;
+    final items = viewModel.items;
+    final total = items.length;
+    final completed = items.where((item) => item.completed).length;
 
     return Stack(
-        children: [
-    Column(
-    children: [
-        /*Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Checklist',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text('$completed/${viewModel.items.length} completate'),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: viewModel.isSaving
-                    ? null
-                    : () => _edit(context, viewModel),
-                icon: const Icon(Icons.add),
-                label: const Text('Aggiungi attività'),
-              ),
-              if (viewModel.isSaving)
-                const LinearProgressIndicator(),
-            ],
-          ),
-        ),
-*/
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '$completed/${viewModel.items.length} completate',
-            ),
-          ),
-        ),
-
-        if (viewModel.isSaving)
-          const LinearProgressIndicator(),
-
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: viewModel.load,
-            child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
-              itemCount: viewModel.items.length,
-              itemBuilder: (context, index) {
-                final item = viewModel.items[index];
-
-                return Card(
-                  child: CheckboxListTile(
-                    value: item.completed,
-                    onChanged: viewModel.isSaving
-                        ? null
-                        : (_) async {
-                      if (!await viewModel.toggle(item) &&
-                          context.mounted) {
-                        _showError(context, viewModel);
-                      }
-                    },
-                    title: Text(item.text),
-                    secondary: PopupMenuButton<String>(
-                      enabled: !viewModel.isSaving,
-                      onSelected: (action) {
-                        if (action == 'edit') {
-                          _edit(context, viewModel, item);
-                        } else {
-                          _remove(context, viewModel, item);
-                        }
-                      },
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Text('Modifica'),
+      children: [
+        Column(
+          children: [
+            // Riepilogo compatto della checklist.
+            if (total > 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  16, 16, 16, 12,
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '$completed di $total completate',
+                          style: theme.textTheme.bodyMedium,
                         ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Elimina'),
+                        Text(
+                          '${(completed / total * 100).round()}%',
+                          style: theme.textTheme.labelMedium,
                         ),
                       ],
                     ),
+
+                    const SizedBox(height: 10),
+
+                    LinearProgressIndicator(
+                      value: completed / total,
+                      minHeight: 6,
+                      borderRadius: BorderRadius.circular(8),
+                      backgroundColor:
+                      colors.surfaceContainerHighest,
+                    ),
+                  ],
+                ),
+              ),
+
+            if (viewModel.isSaving)
+              const LinearProgressIndicator(minHeight: 2),
+
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: viewModel.load,
+                child: items.isEmpty
+                // Nessun passaggio "Crea checklist".
+                    ? ListView(
+                  physics:
+                  const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    24, 80, 24, 96,
                   ),
-                );
-              },
+                  children: [
+                    Icon(
+                      Icons.checklist_outlined,
+                      size: 56,
+                      color: colors.onSurfaceVariant,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    Text(
+                      'Nessuna attività',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleMedium,
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Text(
+                      'Tocca + per aggiungere la prima.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                )
+
+                // Elenco leggero, senza Card.
+                    : ListView.separated(
+                  physics:
+                  const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    12, 8, 12, 96,
+                  ),
+                  itemCount: items.length,
+
+                  separatorBuilder: (_, _) =>
+                  const Divider(
+                    height: 1,
+                    indent: 52,
+                    endIndent: 12,
+                  ),
+
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+
+                    return CheckboxListTile(
+                      key: ValueKey(item.id),
+                      value: item.completed,
+
+                      controlAffinity:
+                      ListTileControlAffinity.leading,
+
+                      contentPadding:
+                      const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 6,
+                      ),
+
+                      title: Text(
+                        item.text,
+                        style: theme.textTheme.bodyLarge
+                            ?.copyWith(
+                          decoration: item.completed
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          color: item.completed
+                              ? colors.onSurfaceVariant
+                              : colors.onSurface,
+                        ),
+                      ),
+
+                      // Conferma lo stato tramite il backend.
+                      onChanged: viewModel.isSaving
+                          ? null
+                          : (_) async {
+                        final success =
+                        await viewModel.toggle(item);
+
+                        if (!success && context.mounted) {
+                          _showError(
+                            context,
+                            viewModel,
+                          );
+                        }
+                      },
+
+                      // Menu di modifica ed eliminazione.
+                      secondary: PopupMenuButton<String>(
+                        tooltip: 'Gestisci attività',
+                        enabled: !viewModel.isSaving,
+
+                        onSelected: (action) {
+                          if (action == 'edit') {
+                            _edit(context, viewModel, item);
+                          } else if (action == 'delete') {
+                            _remove(context, viewModel, item);
+                          }
+                        },
+
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Text('Modifica'),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Text('Elimina'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
+          ],
         ),
 
-    ],
-    ),
-
-          // Pulsante fisso in basso a destra.
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton(
-              heroTag: 'add_checklist_item',
-              tooltip: 'Aggiungi attività',
-              onPressed: viewModel.isSaving
-                  ? null
-                  : () => _edit(context, viewModel),
-              child: const Icon(Icons.add),
-            ),
+        // Unico pulsante + per checklist nuove ed esistenti.
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton(
+            heroTag: 'add_checklist_item',
+            tooltip: 'Aggiungi attività',
+            onPressed: viewModel.isSaving
+                ? null
+                : () => _edit(context, viewModel),
+            child: const Icon(Icons.add),
           ),
-        ],
+        ),
+      ],
     );
-
-
   }
+
 }
